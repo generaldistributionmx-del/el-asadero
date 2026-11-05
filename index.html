@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>El Asadero · Insumos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rye&family=Oswald:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Tema claro con los colores del logo (Manuel, 23-oct-2026), igual que las demás pantallas. */
+    --negro:#FBF5EA; --carbon:#F4EBDB; --tarjeta:#FFFFFF; --borde:#E5D6BF;
+    --rojo:#C0622F; --rojo-vivo:#C0622F; --crema:#2B2622; --tan:#6E6458;
+    --naranja:#A01C2C; --verde:#3F8550; --gris:#857B70;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--negro);color:var(--crema);font-family:Oswald,system-ui,sans-serif;font-size:17px;
+}
+  header{text-align:center;padding:14px 16px 8px}
+  header img{width:min(320px,85%);display:block;margin:0 auto}
+  header .lema{font-family:Rye,serif;color:var(--tan);font-size:13px;letter-spacing:2px;margin-top:6px}
+  nav{position:sticky;top:0;z-index:5;display:flex;gap:4px;padding:8px 10px;background:var(--negro);border-bottom:1px solid var(--borde);box-shadow:0 2px 6px rgba(80,50,20,.08);overflow-x:auto}
+  nav button{flex:1;min-width:80px;background:#fff;color:var(--tan);border:1px solid var(--borde);border-radius:8px;padding:9px 6px;
+    font-family:Rye,serif;font-size:13px;cursor:pointer}
+  nav button.on{background:var(--rojo);border-color:var(--rojo);color:#fff}
+  main{max-width:760px;margin:0 auto;padding:12px 16px 90px}
+  h2{font-family:Rye,serif;font-weight:400;color:var(--crema);text-align:center;margin:10px 0 14px;font-size:22px}
+  h2::before,h2::after{content:" ★ ";color:var(--rojo-vivo);font-size:14px}
+  .aviso{border:1px dashed var(--tan);color:var(--tan);border-radius:10px;padding:10px 12px;font-size:14px;margin-bottom:14px}
+  .card{background:var(--tarjeta);border:1px solid #EADBC4;border-radius:12px;padding:12px;margin-bottom:10px;
+    box-shadow:0 2px 8px rgba(80,50,20,.10)}
+  .fila{display:flex;justify-content:space-between;align-items:center;gap:10px}
+  .nombre{font-weight:600;font-size:18px;text-transform:uppercase;letter-spacing:.5px}
+  .sub{color:var(--gris);font-size:14px}
+  .num{font-weight:700;font-size:22px;color:var(--naranja);white-space:nowrap}
+  .bajo{color:#C62828}.ok{color:var(--verde)}
+  .chip{display:inline-block;font-size:12px;padding:2px 8px;border-radius:20px;border:1px solid var(--rojo);color:var(--tan);background:#fff;margin-right:4px}
+  .chip.alerta{background:var(--rojo-vivo);color:#fff;border-color:var(--rojo-vivo)}
+  label{display:block;font-size:14px;color:var(--tan);margin:10px 0 4px}
+  input,select,textarea{width:100%;padding:11px;border-radius:8px;border:1px solid #D9C7AB;background:#fff;color:var(--crema);font:inherit;font-size:17px}
+  .dos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .btn{display:block;width:100%;margin-top:14px;padding:13px;border:0;border-radius:10px;background:var(--rojo-vivo);color:#fff;
+    font-family:Rye,serif;font-size:16px;cursor:pointer}
+  .btn.sec{background:transparent;border:1px solid var(--tan);color:var(--tan)}
+  .btn.mini{display:inline-block;width:auto;margin:0;padding:6px 12px;font-size:13px}
+  .buscar{margin-bottom:12px}
+  .grupo{font-family:Rye,serif;color:var(--tan);margin:18px 0 8px;font-size:15px}
+  .vacio{color:var(--gris);text-align:center;padding:20px}
+  .oculto{display:none}
+  dialog{background:#FFFDF8;color:var(--crema);border:2px solid var(--rojo);border-radius:14px;width:min(520px,92vw);padding:16px}
+  dialog::backdrop{background:rgba(40,25,10,.55)}
+  table{width:100%;border-collapse:collapse;font-size:15px}
+  td{padding:6px 4px;border-bottom:1px solid var(--borde)}
+  .cantidad{display:flex;flex-direction:column;align-items:center;gap:4px}
+  .pasos{display:flex;align-items:center;gap:6px}
+  .pasos button{width:44px;height:44px;border-radius:10px;border:2px solid var(--tan);background:#fff;color:var(--crema);font-size:26px;font-weight:700;cursor:pointer;line-height:1}
+  .pasos button.mas{background:var(--rojo-vivo);border-color:var(--rojo-vivo);color:#fff}
+  .cantidad input{width:62px;text-align:center;font-size:24px;font-weight:700;color:var(--naranja);padding:8px 4px;border:2px solid var(--borde)}
+  /* Sin flechitas: un toque en ellas metía un 0 de más (escribías 3 y quedaba 30). */
+  .cantidad input{-moz-appearance:textfield;appearance:textfield}
+  .cantidad input::-webkit-inner-spin-button,.cantidad input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+  .cantidad input:focus{outline:none;border-color:var(--naranja)}
+  .cantidad input.pide{border-color:var(--naranja);background:#FDF0EE}
+  .sub .bajo{color:#C62828}
+  .cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+  .cat{text-align:center;cursor:pointer;padding:18px 10px;margin:0}
+  .cat .ic{font-size:44px;line-height:1.1}
+  .cat .nombre{font-family:Rye,serif;font-weight:400;margin:6px 0 2px;text-transform:none;font-size:19px}
+  .toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--verde);color:#fff;padding:10px 18px;border-radius:30px;
+    font-weight:600;opacity:0;transition:.3s;pointer-events:none}
+  .toast.ver{opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <img src="logo.png" alt="El Asadero Mexican Food">
+  <div class="lema">CONTROL DE INSUMOS</div>
+</header>
+<nav>
+  <button data-tab="insumos" class="on">Insumos</button>
+  <button data-tab="compra">Compra</button>
+  <button data-tab="conteo">Conteo</button>
+  <button data-tab="platillos">Platillos</button>
+  <button data-tab="recetas">Recetas</button>
+  <button data-tab="historial">Historial</button>
+</nav>
+
+<main>
+  <!-- INSUMOS -->
+  <section id="insumos">
+    <h2>Insumos</h2>
+    <div class="aviso">Todos los aparatos conectados ven la misma lista. Toca un insumo para editarlo o apagarlo.</div>
+    <div class="dos" style="margin-bottom:12px">
+      <button class="btn" id="btnLista" onclick="abrirLista()" style="margin:0">🛒 Lo que ocupo</button>
+      <button class="btn" onclick="mandarWhatsApp()" style="margin:0;background:#25a244">💬 WhatsApp</button>
+    </div>
+    <input class="buscar" id="buscarInsumo" placeholder="Buscar insumo…">
+    <div id="cabCat" class="oculto" style="margin-bottom:10px">
+      <button class="btn sec mini" onclick="verCategoria(null)">‹ Categorías</button>
+      <span class="grupo" id="nomCat" style="margin-left:8px"></span>
+    </div>
+    <div id="listaInsumos"></div>
+    <button class="btn sec" onclick="abrirInsumo()">+ Agregar insumo</button>
+  </section>
+
+  <!-- COMPRA -->
+  <section id="compra" class="oculto">
+    <h2>Registrar compra</h2>
+    <div class="card">
+      <label>Proveedor</label>
+      <input id="cProv" list="provs" placeholder="Ej. Restaurant Depot, Costco…">
+      <datalist id="provs"></datalist>
+      <label>Insumo</label>
+      <select id="cInsumo"></select>
+      <div class="dos">
+        <div><label>Cantidad (<span id="cUnidad">-</span>)</label><input id="cCant" type="number" inputmode="decimal" step="any"></div>
+        <div><label>Costo total $</label><input id="cCosto" type="number" inputmode="decimal" step="any"></div>
+      </div>
+      <div class="sub" id="cUnit" style="margin-top:8px"></div>
+      <label>Nota (opcional)</label>
+      <input id="cNota" placeholder="Factura, quién recibió…">
+      <button class="btn" onclick="guardarCompra()">Guardar compra</button>
+    </div>
+  </section>
+
+  <!-- CONTEO -->
+  <section id="conteo" class="oculto">
+    <h2>Conteo y merma</h2>
+    <div class="aviso">Al cerrar, cuenta lo que hay de verdad y ponlo aquí. Si algo se echó a perder, regístralo como merma.</div>
+    <div class="card">
+      <label>Insumo</label>
+      <select id="kInsumo"></select>
+      <div class="sub" id="kActual" style="margin-top:6px"></div>
+      <label>¿Qué pasó?</label>
+      <select id="kTipo">
+        <option value="conteo">Conteo físico (lo que hay ahorita)</option>
+        <option value="merma">Merma (se tiró / se echó a perder)</option>
+      </select>
+      <label id="kLabel">Cantidad contada</label>
+      <input id="kCant" type="number" inputmode="decimal" step="any">
+      <label>Nota (opcional)</label>
+      <input id="kNota">
+      <button class="btn" onclick="guardarConteo()">Guardar</button>
+    </div>
+  </section>
+
+  <!-- PLATILLOS -->
+  <section id="platillos" class="oculto">
+    <h2>Platillos del menú</h2>
+    <div class="aviso">Los platillos de tu menú con sus precios. Toca uno para llenar cuánto lleva de cada insumo y saber cuánto te cuesta hacerlo.</div>
+    <div id="listaPlatillos"></div>
+  </section>
+
+  <!-- RECETAS: solo recetas (preparaciones por tanda que dicta José, de la cocina) -->
+  <section id="recetas" class="oculto">
+    <h2>Recetas</h2>
+    <div class="aviso">Las recetas de la cocina, como las dicta José: ingredientes de una tanda y cómo se hace.</div>
+    <div id="listaPreps"></div>
+  </section>
+
+  <!-- HISTORIAL -->
+  <section id="historial" class="oculto">
+    <h2>Historial</h2>
+    <div id="listaHist"></div>
+  </section>
+</main>
+
+<!-- Dialogo insumo -->
+<dialog id="dlgInsumo">
+  <h2 id="dlgInsumoTit">Insumo</h2>
+  <label>Nombre</label><input id="iNombre">
+  <div class="dos">
+    <div><label>Unidad</label>
+      <select id="iUnidad"><option>lb</option><option>kg</option><option>pieza</option><option>paquete</option><option>caja</option><option>costal</option><option>galón</option><option>litro</option><option>bolsa</option><option>lata</option></select></div>
+    <div><label>Categoría</label>
+      <select id="iCat"></select></div>
+  </div>
+  <label>Mínimo (avisar cuando baje de aquí)</label><input id="iMin" type="number" inputmode="decimal" step="any">
+  <button class="btn" onclick="guardarInsumo()">Guardar</button>
+  <button class="btn sec" id="iApagar" onclick="apagarInsumo()">Apagar insumo</button>
+  <button class="btn sec" onclick="dlgInsumo.close()">Cancelar</button>
+</dialog>
+
+<!-- Lista de lo que ocupo -->
+<dialog id="dlgLista">
+  <h2>Lo que ocupo</h2>
+  <table id="tablaLista"></table>
+  <button class="btn" onclick="mandarWhatsApp()" style="background:#25a244">Mandar por WhatsApp</button>
+  <div class="sub" style="text-align:center;margin-top:6px">A: <span id="waNum"></span> · <a href="#" onclick="cambiarWhatsApp();return false" style="color:var(--tan)">cambiar número</a></div>
+  <button class="btn sec" onclick="copiarLista()">Copiar lista</button>
+  <button class="btn sec" onclick="vaciarLista()">Empezar lista nueva</button>
+  <button class="btn sec" onclick="dlgLista.close()">Cerrar</button>
+</dialog>
+
+<!-- Dialogo receta -->
+<dialog id="dlgReceta">
+  <h2 id="rTit">Receta</h2>
+  <div class="sub" id="rPrecio"></div>
+  <table id="rTabla"></table>
+  <div class="dos" style="margin-top:8px">
+    <select id="rInsumo"></select>
+    <input id="rCant" type="number" inputmode="decimal" step="any" placeholder="Cantidad">
+  </div>
+  <button class="btn sec" onclick="agregarARecta()">+ Agregar a la receta</button>
+  <button class="btn" onclick="dlgReceta.close()">Listo</button>
+</dialog>
+
+<div class="toast" id="toast"></div>
+
+<script>window.AS_NUBE = {url: "https://sbmyrqfbnhxsxtgcqwta.supabase.co", key: "sb_publishable_QbD2uuVLr-ijO5-rIgbILg_tPWhX5kv"};</script>
+<script src="sync.js"></script>
+<script src="datos-menu.js"></script>
+<script>
+// ---------- Platillos para las recetas: el menú de Clover (datos-menu.js), sin refrescos ni dulces de tienda ----------
+var MENU = [];
+AS_MENU_INICIAL.forEach(function(c){ if(c[0]==='Refrescos' || c[0]==='Dulces y botanas') return;
+  c[1].forEach(function(p){ MENU.push([p[0], p[1], c[0]]); }); });
+// Listas que dictó Manuel (20-oct-2026). En cada categoría quedan sólo éstas; las sugeridas que no dijo se apagan (no se borran).
+// Si se cambia una lista aquí, se vuelve a aplicar sola. Lo que Manuel agrega a mano en la app (propio) nunca se apaga.
+// "unidad" es la de la categoría; las excepciones van en UNIDADES_MANUEL.
+var LISTAS_MANUEL = {
+  Carnes:    {unidad:'lb', nombres:['Carne asada picada','Carne asada en bistec','Pechuga de pollo picada','Camarón','Adobada','Chorizo',
+              'Lengua','Tripa cocida','Menudo','Pata de res','Chamorro','Carne para birria (bulk)','Tocino','Jamón']},
+  Verduras:  {unidad:'lb', nombres:['Cebolla','Cebolla morada','Cilantro','Limón','Jitomate','Tomatillo','Chile jalapeño','Aguacate','Lechuga','Jícama','Pepino',
+              'Mango','Plátano','Piña','Fresa','Melón','Sandía','Naranja']},
+  Tortillas: {unidad:'paquete', nombres:['Tortilla para taco','Tortilla para quesadillas','Tortilla para burrito','Tortilla para birria',
+              'Pan para torta','Tostadas','Chilaquiles','Family Pack']},
+  // 23-oct: + leche evaporada (junto a la leche), Knorr, clamato, tajín, Valentina, jugo de naranja y sazonador.
+  // No se repitieron: leche condensada (= Lechera), cuerito y sopa Maruchan (ya están en Otros).
+  Insumos:   {unidad:'pieza', nombres:['Queso para quesadilla','Queso para nachos','Queso fresco','Queso cotija','Leche','Leche evaporada','Crema',
+              'Media crema','Lechera','Granola','Coco rallado','Banderilla con popote',
+              'Arroz','Frijol','Azúcar',
+              'Knorr de res','Knorr de tomate','Sazonador de carne','Tajín','Salsa Valentina','Salsa Maggi','Chamoy','Clamato','Jugo de naranja']},
+  // Especias (Manuel, 23-oct). "Black pepper" = pimienta negra (una sola). Jamaica va aquí, lo dijo él.
+  Especias:  {unidad:'bolsa', nombres:['Chile guajillo','Chile de árbol','Chile chiltepín','Comino entero','Comino molido','Clavo','Orégano',
+              'Pimienta negra','Hoja de laurel','Canela entera','Canela molida','Jamaica']},
+  Plásticos: {unidad:'paquete', nombres:['Vaso cristalino 32 oz','Vaso cristalino 20 oz','Vaso cristalino 16 oz',
+              'Tapa 32 oz plana','Tapa 32 oz ovalada','Tapa 20 oz','Tapa 16 oz plana','Tapa 16 oz ovalada',
+              'Vaso de foam 32 oz','Tapa plana 32 oz para foam','Vaso de foam 16 oz para esquite','Vaso de foam 14 oz','Vaso 6 oz para consomé',
+              'Vasito 2 oz para salsa','Tapa para vasito 2 oz',
+              'Cucharas','Tenedores','Cuchillos','Popotes','Servilletas','Picadientes',
+              'Platos lisos redondos para taco','Platos para llevar planos','Contenedor de foam para burrito grande','Contenedor de foam para burrito chico',
+              'Papel para burrito','Bolsas de plástico para llevar','Bolsitas para verdura (para llevar)','Bolsitas Ziploc chicas',
+              'Papel toalla (rollo)','Papel térmico (rollo)']},
+  // Limpieza (Manuel, 23-oct-2026).
+  Limpieza:  {unidad:'pieza', nombres:['Cloro','Jabón','Jabón para trastes','Sanitizer','Windex','Desengrasante para estufa',
+              'Piedra para lavar la plancha','Bolsa de basura 55 galones']},
+  // Bebidas que se venden (Manuel, 23-oct-2026). "Water Paper" = Dr Pepper. Se compran por caja.
+  Bebidas:   {unidad:'caja', nombres:['Coca-Cola mexicana botella','Coca-Cola lata regular','Coca-Cola lata Zero','Coca-Cola de dieta',
+              'Pepsi lata','Sprite','Dr Pepper','Sidral','Topo Chico','Monster']},
+  Otros:     {unidad:'pieza', nombres:['Sopa Maruchan','Tamal de queso','Tamal de res','Tamal de pollo','Tamal dulce','Tostito verde',
+              'Elote blanco para esquite','Mango congelado','Cacahuate japonés','Mostaza','Cueritos','Chaca chaca']}
+};
+// Cómo compra Manuel cada cosa cuando no es la unidad de su categoría.
+// 23-oct-2026: "verduras se compra todo por caja" → todas las verduras van por caja (antes cebolla por costal y algunas por pieza).
+var UNIDADES_MANUEL = {};
+LISTAS_MANUEL.Verduras.unidad = 'caja';
+LISTAS_MANUEL.Verduras.nombres.forEach(function(n){ UNIDADES_MANUEL[n] = 'caja'; });
+// Sugeridos del primer borrador (ya reemplazados por las listas de Manuel; se quedan apagados). Existencia en 0: no se inventan cantidades.
+var SUGERIDOS = [].concat.apply([], Object.keys(LISTAS_MANUEL).map(function(c){
+  return LISTAS_MANUEL[c].nombres.map(function(n){ return [n, UNIDADES_MANUEL[n] || LISTAS_MANUEL[c].unidad, c]; });
+})).concat([
+  ['Cerveza','caja','Bebidas'],['Clamato','lata','Bebidas'],['Jarabe snowcone','galón','Bebidas'],['Hielo','bolsa','Bebidas'],
+  ['Platos desechables','paquete','Desechables'],['Vasos','paquete','Desechables'],['Servilletas','paquete','Desechables'],['Papel aluminio','pieza','Desechables']
+]);
+
+// Categorías que pidió Manuel (20-oct-2026): las 5 primeras, más Tortillas y Otros.
+var CATS = [['Carnes','🥩'],['Verduras','🥬'],['Tortillas','🫓'],['Insumos','🧀'],['Especias','🌶️'],['Plásticos','🥡'],['Bebidas','🥤'],['Limpieza','🧽'],['Otros','🧺']];
+var NOMBRES_CAT = CATS.map(function(c){ return c[0]; });
+// Pasa las categorías del primer borrador a las nuevas.
+function categoriaNueva(c){
+  if(NOMBRES_CAT.indexOf(c)>=0) return c;
+  return {'Mariscos':'Carnes','Verduras y frutas':'Verduras','Desechables':'Plásticos','Tortillas y pan':'Tortillas'}[c] || 'Insumos';
+}
+
+// Preparaciones por tanda, dictadas por José (cocina). Cantidades tal como las dijo; lo que no dijo no se inventa.
+// Si cambia la definición ("v"), se vuelve a aplicar sola a menos que alguien la haya editado a mano ("editado").
+var PREPS_INICIAL = [
+  {clave:'horchata', v:1, nombre:'Agua de horchata', rinde:'15 vasos',
+   rindeNota:'Vitrolero de 176 oz (≈ 5.2 litros) · ≈ 347 ml por vaso',
+   ingredientes:[
+     ['Arroz','32 oz (2 lb)'], ['Canela entera','4 trozos'], ['Leche','½ galón'],
+     ['Lechera (Nestlé La Lechera)','2 latas de 14 oz'], ['Leche evaporada','2 latas de 12 oz'],
+     ['Vainilla','2 oz'], ['Azúcar','32 oz (2 lb)'], ['Agua','la necesaria para completar el vitrolero']],
+   pasos:[
+     'La noche anterior: remojar el arroz con la canela, toda la noche.',
+     'Al día siguiente: licuar el arroz con la canela y agua, y colar.',
+     'El bagazo se vuelve a licuar con más agua y se cuela otra vez, 3 veces, hasta sacarle todo el jugo al arroz. El bagazo final se tira.',
+     'En el vitrolero: ½ galón de leche y todo el jugo del arroz con canela.',
+     'Agregar la lechera, la leche evaporada, la vainilla y el azúcar.',
+     'Completar con agua y probar hasta que quede dulce.']}
+];
+var KEY = 'asadero_insumos_v1';
+var DB, catSel = null;
+function nuevoId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function cargar(){
+  try { DB = JSON.parse(localStorage.getItem(KEY)); } catch(e){ DB = null; }
+  if(!DB){
+    DB = { insumos: SUGERIDOS.map(function(s){ return {id:nuevoId(), nombre:s[0], unidad:s[1], cat:s[2], stock:0, minimo:null, activo:true}; }),
+           movs: [], recetas: {} };
+  }
+  DB.insumos.forEach(function(i){ i.cat = categoriaNueva(i.cat); });
+  // Aplica cada lista de Manuel cuando es nueva o cambió (se compara con la última que se aplicó).
+  if(!DB.listasAplicadas || typeof DB.listasAplicadas[Object.keys(DB.listasAplicadas)[0]] !== 'string') DB.listasAplicadas = {};
+  Object.keys(LISTAS_MANUEL).forEach(function(cat){
+    var L = LISTAS_MANUEL[cat], firma = L.nombres.join('|');
+    if(DB.listasAplicadas[cat] === firma) return;
+    DB.insumos.forEach(function(i){ if(i.cat===cat && i.activo && !i.propio && L.nombres.indexOf(i.nombre)<0) i.activo = false; });
+    L.nombres.forEach(function(n){
+      var ya = DB.insumos.find(function(i){ return i.nombre===n; });
+      if(ya){ ya.activo = true; ya.cat = cat; }
+      else DB.insumos.push({id:nuevoId(), nombre:n, unidad:UNIDADES_MANUEL[n] || L.unidad, cat:cat, stock:0, minimo:null, activo:true});
+    });
+    DB.listasAplicadas[cat] = firma;
+  });
+  // Unidades dictadas: se ponen cuando cambian aquí (después él las puede cambiar en cada insumo).
+  var firmaU = JSON.stringify(UNIDADES_MANUEL);
+  if(DB.unidadesManuel !== firmaU){
+    DB.insumos.forEach(function(i){ if(UNIDADES_MANUEL[i.nombre]) i.unidad = UNIDADES_MANUEL[i.nombre]; });
+    DB.unidadesManuel = firmaU;
+  }
+  // Nunca dos insumos encendidos con el mismo nombre: el repetido se apaga (no se borra), queda marcado
+  // con a cuál se juntó, y su existencia y lo que se ocupaba se le suman al que se queda.
+  var vistos = {};
+  DB.insumos.forEach(function(i){
+    if(!i.activo) return;
+    var k = i.nombre.trim().toLowerCase(), ya = vistos[k];
+    if(!ya){ vistos[k] = i; return; }
+    ya.stock = (ya.stock||0) + (i.stock||0); ya.ocupo = (ya.ocupo||0) + (i.ocupo||0);
+    i.activo = false; i.fusionadoEn = ya.id;
+  });
+  // Preparaciones de José: se agregan las nuevas y se actualizan las que no se hayan editado a mano.
+  if(!DB.preps) DB.preps = [];
+  PREPS_INICIAL.forEach(function(p){
+    var ya = DB.preps.find(function(x){ return x.clave===p.clave; });
+    if(!ya) DB.preps.push(JSON.parse(JSON.stringify(p)));
+    else if(ya.v !== p.v && !ya.editado) DB.preps[DB.preps.indexOf(ya)] = JSON.parse(JSON.stringify(p));
+  });
+  guardar();
+}
+function guardar(){ try { localStorage.setItem(KEY, JSON.stringify(DB)); } catch(e){ toast('No se pudo guardar en este navegador'); } }
+function $(id){ return document.getElementById(id); }
+function insumo(id){ return DB.insumos.find(function(i){ return i.id===id; }); }
+function activos(){ return DB.insumos.filter(function(i){ return i.activo; }).sort(function(a,b){ return a.nombre.localeCompare(b.nombre); }); }
+function dinero(n){ return '$' + (Math.round(n*100)/100).toFixed(2); }
+function fmt(n){ return (Math.round(n*100)/100).toString(); }
+function toast(t){ var e=$('toast'); e.textContent=t; e.classList.add('ver'); setTimeout(function(){ e.classList.remove('ver'); },1800); }
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+// Costo por unidad = la compra más reciente de ese insumo (precio congelado en cada movimiento).
+function ultimoCosto(id){
+  for(var i=DB.movs.length-1;i>=0;i--){ var m=DB.movs[i]; if(m.insumoId===id && m.tipo==='compra' && m.cant>0) return m.costo/m.cant; }
+  return null;
+}
+
+// ---------- Pestañas ----------
+document.querySelectorAll('nav button').forEach(function(b){
+  b.onclick = function(){
+    document.querySelectorAll('nav button').forEach(function(x){ x.classList.toggle('on', x===b); });
+    document.querySelectorAll('main section').forEach(function(s){ s.classList.toggle('oculto', s.id!==b.dataset.tab); });
+    pintar();
+  };
+});
+
+// ---------- Insumos ----------
+// Orden: por categoría, y dentro de cada una como lo dictó Manuel; lo demás al final por nombre.
+function ordenManuel(i){ var L = LISTAS_MANUEL[i.cat], k = L ? L.nombres.indexOf(i.nombre) : -1; return k<0 ? 999 : k; }
+function ordenInsumos(a,b){
+  return NOMBRES_CAT.indexOf(a.cat)-NOMBRES_CAT.indexOf(b.cat) || ordenManuel(a)-ordenManuel(b) || a.nombre.localeCompare(b.nombre);
+}
+function esBajo(i){ return i.minimo!=null && i.stock < i.minimo; }
+function verCategoria(c){ catSel = c; $('buscarInsumo').value=''; pintarInsumos(); window.scrollTo(0,0); }
+function pintarCategorias(){
+  $('listaInsumos').innerHTML = '<div class="cats">' + CATS.map(function(c){
+    var items = activos().filter(function(i){ return i.cat===c[0]; }), bajos = items.filter(esBajo).length;
+    var porPedir = items.filter(function(i){ return i.ocupo>0; }).length;
+    return '<div class="card cat" onclick="verCategoria(\''+c[0]+'\')"><div class="ic">'+c[1]+'</div>'+
+      '<div class="nombre">'+c[0]+'</div><div class="sub">'+items.length+' insumo'+(items.length===1?'':'s')+'</div>'+
+      (porPedir?'<span class="chip on">🛒 '+porPedir+' por pedir</span>':'')+
+      (bajos?'<span class="chip alerta">⚠ '+bajos+' bajo mínimo</span>':'')+'</div>';
+  }).join('') + '</div>';
+}
+function pintarInsumos(){
+  var q = $('buscarInsumo').value.toLowerCase(), html='', cat='';
+  // Sin categoría escogida ni búsqueda: se ven las categorías.
+  $('cabCat').classList.toggle('oculto', !catSel);
+  if(catSel){ var c = CATS.find(function(x){ return x[0]===catSel; }); $('nomCat').textContent = c[1]+' '+c[0]; }
+  if(!catSel && !q){ pintarCategorias(); pintarBotonLista(); return; }
+  var lista = activos().filter(function(i){ return i.nombre.toLowerCase().indexOf(q)>=0 && (!catSel || i.cat===catSel); })
+    .sort(ordenInsumos);
+  var bajos = lista.filter(function(i){ return i.minimo!=null && i.stock < i.minimo; }).length;
+  if(bajos) html += '<div class="card"><span class="chip alerta">⚠ '+bajos+' por debajo del mínimo</span></div>';
+  lista.forEach(function(i){
+    if(!catSel && i.cat!==cat){ cat=i.cat; html+='<div class="grupo">'+esc(cat)+'</div>'; }
+    var bajo = esBajo(i), c = ultimoCosto(i.id);
+    html += '<div class="card fila" onclick="abrirInsumo(\''+i.id+'\')"><div><div class="nombre">'+esc(i.nombre)+'</div>'+
+      '<div class="sub"><span class="'+(bajo?'bajo':'')+'">Hay '+fmt(i.stock)+' '+esc(i.unidad)+'</span>'+(c!=null?' · '+dinero(c)+'/'+esc(i.unidad):'')+'</div></div>'+
+      '<div class="cantidad" onclick="event.stopPropagation()"><div class="sub" style="text-align:center">Ocupo ('+esc(i.unidad)+')</div><div class="pasos">'+
+      '<button onclick="sumarOcupo(\''+i.id+'\',-1)">−</button>'+
+      '<input type="number" inputmode="decimal" min="0" step="any" placeholder="0" id="oc_'+i.id+'" class="'+(i.ocupo>0?'pide':'')+'" value="'+(i.ocupo>0?fmt(i.ocupo):'')+'" onchange="ponerOcupo(\''+i.id+'\',this)" onfocus="this.select()">'+
+      '<button class="mas" onclick="sumarOcupo(\''+i.id+'\',1)">+</button></div></div></div>';
+  });
+  $('listaInsumos').innerHTML = html || '<div class="vacio">'+(q?'Nada con ese nombre.':'Todavía no hay insumos aquí. Agrega uno abajo.')+'</div>';
+  pintarBotonLista();
+}
+// El cuadrito "Ocupo": cuánto hay que comprar de ese insumo. No cambia la existencia; arma la lista de compras.
+function ponerOcupo(id, el){
+  var i = insumo(id), v = el.value==='' ? 0 : parseFloat(el.value);
+  if(!(v>=0)){ el.value = i.ocupo>0?fmt(i.ocupo):''; toast('Cantidad no válida'); return; }
+  i.ocupo = v; guardar(); el.classList.toggle('pide', v>0); pintarBotonLista();
+  toast(v>0 ? i.nombre+': ocupo '+fmt(v)+' '+i.unidad : i.nombre+': fuera de la lista');
+}
+
+// Botones − y + (como en la app de General Distribution). El número también se puede escribir.
+function sumarOcupo(id, d){
+  var el = $('oc_'+id), i = insumo(id);
+  el.value = Math.max(0, (i.ocupo||0) + d) || '';
+  ponerOcupo(id, el);
+}
+
+// ---------- Lista de lo que ocupo ----------
+function porPedir(){
+  return activos().filter(function(i){ return i.ocupo>0; })
+    .sort(ordenInsumos);
+}
+function pintarBotonLista(){
+  var n = porPedir().length;
+  $('btnLista').textContent = '🛒 Lo que ocupo' + (n ? ' ('+n+')' : '');
+}
+function textoLista(){
+  var t = 'El Asadero — lo que ocupo ('+new Date().toLocaleDateString('es-MX',{day:'numeric',month:'short'})+')\n', cat = '';
+  porPedir().forEach(function(i){
+    if(i.cat!==cat){ cat=i.cat; t += '\n'+cat.toUpperCase()+'\n'; }
+    t += '• '+i.nombre+': '+fmt(i.ocupo)+' '+i.unidad+'\n';
+  });
+  return t;
+}
+function abrirLista(){
+  if(!porPedir().length){ toast('La lista está vacía: escribe cuánto ocupas en el cuadrito'); return; }
+  var html='', cat='';
+  porPedir().forEach(function(i){
+    if(i.cat!==cat){ cat=i.cat; html += '<tr><td colspan="2" class="grupo" style="border:0">'+esc(cat)+'</td></tr>'; }
+    html += '<tr><td>'+esc(i.nombre)+'</td><td style="text-align:right" class="num">'+fmt(i.ocupo)+' <span class="sub">'+esc(i.unidad)+'</span></td></tr>';
+  });
+  $('tablaLista').innerHTML = html;
+  $('waNum').textContent = numeroWhatsApp() || 'sin número';
+  $('dlgLista').showModal();
+}
+// WhatsApp a donde llega la lista. Por ahora el celular de Manuel (20-oct-2026); cuando compre el teléfono del
+// restaurante se cambia aquí o con "cambiar número" en la lista.
+var WA_KEY = 'asadero_whatsapp', WA_DEFAULT = '18018596707';
+function numeroWhatsApp(){ try { return localStorage.getItem(WA_KEY) || WA_DEFAULT; } catch(e){ return WA_DEFAULT; } }
+function cambiarWhatsApp(){
+  var n = prompt('Número de WhatsApp a donde llega la lista (con lada, ej. 1 801 555 1234):', numeroWhatsApp());
+  if(n===null) return false;
+  n = n.replace(/\D/g,'');
+  if(n.length===10) n = '1' + n; // número de EE.UU. sin el 1
+  if(n.length<11){ toast('Número incompleto'); return false; }
+  try { localStorage.setItem(WA_KEY, n); } catch(e){}
+  $('waNum').textContent = n; toast('Número guardado'); return true;
+}
+// Abre WhatsApp con la lista ya escrita; la persona le da Enviar.
+function mandarWhatsApp(){
+  if(!porPedir().length){ toast('La lista está vacía: escribe cuánto ocupas en el cuadrito'); return; }
+  if(!numeroWhatsApp() && !cambiarWhatsApp()) return;
+  window.open('https://wa.me/' + numeroWhatsApp() + '?text=' + encodeURIComponent(textoLista()), '_blank');
+}
+function copiarLista(){
+  var t = textoLista();
+  if(navigator.clipboard) navigator.clipboard.writeText(t).then(function(){ toast('Lista copiada: pégala en WhatsApp'); }, function(){ prompt('Copia la lista:', t); });
+  else prompt('Copia la lista:', t);
+}
+function vaciarLista(){
+  if(!confirm('¿Empezar una lista nueva? Se ponen en 0 todos los "Ocupo".')) return;
+  DB.insumos.forEach(function(i){ i.ocupo = 0; }); guardar(); $('dlgLista').close(); pintar(); toast('Lista nueva');
+}
+var editando=null;
+function abrirInsumo(id){
+  editando = id || null; var i = id ? insumo(id) : {nombre:'',unidad:'lb',cat:catSel||'Carnes',minimo:null};
+  $('iCat').innerHTML = NOMBRES_CAT.map(function(c){ return '<option>'+c+'</option>'; }).join('');
+  $('dlgInsumoTit').textContent = id ? 'Editar insumo' : 'Nuevo insumo';
+  $('iNombre').value=i.nombre; $('iUnidad').value=i.unidad; $('iCat').value=i.cat; $('iMin').value = i.minimo==null?'':i.minimo;
+  $('iApagar').style.display = id ? '' : 'none';
+  $('dlgInsumo').showModal();
+}
+function guardarInsumo(){
+  var n=$('iNombre').value.trim(); if(!n){ toast('Ponle nombre'); return; }
+  var m=$('iMin').value===''?null:parseFloat($('iMin').value);
+  if(editando){ var i=insumo(editando); i.nombre=n; i.unidad=$('iUnidad').value; i.cat=$('iCat').value; i.minimo=m; }
+  else DB.insumos.push({id:nuevoId(),nombre:n,unidad:$('iUnidad').value,cat:$('iCat').value,stock:0,minimo:m,activo:true,propio:true});
+  guardar(); $('dlgInsumo').close(); pintar(); toast('Guardado');
+}
+// Nada se borra: se apaga.
+function apagarInsumo(){
+  if(!confirm('¿Apagar este insumo? No se borra, sólo deja de aparecer.')) return;
+  insumo(editando).activo=false; guardar(); $('dlgInsumo').close(); pintar(); toast('Insumo apagado');
+}
+
+// ---------- Selects ----------
+function llenarSelect(sel){
+  var v=sel.value;
+  sel.innerHTML = activos().map(function(i){ return '<option value="'+i.id+'">'+esc(i.nombre)+' ('+esc(i.unidad)+')</option>'; }).join('');
+  if(v && insumo(v) && insumo(v).activo) sel.value=v;
+}
+
+// ---------- Compra ----------
+function actCompra(){
+  var i=insumo($('cInsumo').value); $('cUnidad').textContent = i?i.unidad:'-';
+  var c=parseFloat($('cCant').value), t=parseFloat($('cCosto').value);
+  $('cUnit').textContent = (c>0 && t>=0) ? 'Sale a '+dinero(t/c)+' por '+i.unidad : '';
+}
+['cInsumo','cCant','cCosto'].forEach(function(id){ $(id).addEventListener('input',actCompra); });
+function guardarCompra(){
+  var i=insumo($('cInsumo').value), c=parseFloat($('cCant').value), t=parseFloat($('cCosto').value);
+  if(!i || !(c>0)){ toast('Falta la cantidad'); return; }
+  if(!(t>=0)){ toast('Falta el costo'); return; }
+  DB.movs.push({id:nuevoId(),fecha:new Date().toISOString(),tipo:'compra',insumoId:i.id,nombre:i.nombre,unidad:i.unidad,
+    cant:c,costo:t,proveedor:$('cProv').value.trim(),nota:$('cNota').value.trim()});
+  i.stock += c;
+  if(i.ocupo>0) i.ocupo = Math.max(0, i.ocupo - c); // lo comprado se descuenta de "Ocupo"
+  guardar();
+  $('cCant').value=''; $('cCosto').value=''; $('cNota').value=''; actCompra(); pintar();
+  toast('Compra guardada: +'+fmt(c)+' '+i.unidad+' de '+i.nombre);
+}
+
+// ---------- Conteo / merma ----------
+function actConteo(){
+  var i=insumo($('kInsumo').value);
+  $('kActual').textContent = i ? 'La app dice que hay: '+fmt(i.stock)+' '+i.unidad : '';
+  $('kLabel').textContent = $('kTipo').value==='conteo' ? 'Cantidad contada' : 'Cantidad que se tiró';
+}
+['kInsumo','kTipo'].forEach(function(id){ $(id).addEventListener('input',actConteo); });
+function guardarConteo(){
+  var i=insumo($('kInsumo').value), c=parseFloat($('kCant').value), tipo=$('kTipo').value;
+  if(!i || !(c>=0) || $('kCant').value===''){ toast('Falta la cantidad'); return; }
+  var antes=i.stock, despues = tipo==='conteo' ? c : Math.max(0, antes-c);
+  DB.movs.push({id:nuevoId(),fecha:new Date().toISOString(),tipo:tipo,insumoId:i.id,nombre:i.nombre,unidad:i.unidad,
+    cant:c,antes:antes,despues:despues,nota:$('kNota').value.trim()});
+  i.stock=despues; guardar(); $('kCant').value=''; $('kNota').value=''; actConteo(); pintar();
+  toast(tipo==='conteo' ? (despues===antes?'Cuadra exacto':'Diferencia: '+fmt(despues-antes)+' '+i.unidad) : 'Merma registrada');
+}
+
+// ---------- Platillos y recetas ----------
+function costoReceta(nombre){
+  var r=DB.recetas[nombre]; if(!r||!r.length) return null;
+  var total=0, falta=false;
+  r.forEach(function(x){ var c=ultimoCosto(x.insumoId); if(c==null) falta=true; else total+=c*x.cant; });
+  return {total:total, falta:falta};
+}
+function pintarPlatillos(){
+  var html='', cat='';
+  MENU.forEach(function(p){
+    if(p[2]!==cat){ cat=p[2]; html+='<div class="grupo">'+cat+'</div>'; }
+    var k=costoReceta(p[0]), detalle;
+    if(!k) detalle='<span class="chip">Receta pendiente</span>';
+    else if(k.falta) detalle='<span class="chip">Faltan costos de compra</span>';
+    else detalle='<span class="chip">Cuesta '+dinero(k.total)+'</span><span class="chip">Ganas '+dinero(p[1]-k.total)+' ('+Math.round((p[1]-k.total)/p[1]*100)+'%)</span>';
+    html+='<div class="card fila" onclick="abrirReceta(\''+esc(p[0]).replace(/'/g,"\\'")+'\')"><div><div class="nombre">'+esc(p[0])+'</div>'+detalle+'</div>'+
+      '<div class="num">'+dinero(p[1])+'</div></div>';
+  });
+  $('listaPlatillos').innerHTML=html;
+}
+function pintarPreps(){
+  $('listaPreps').innerHTML = (DB.preps||[]).map(function(p){
+    return '<div class="card"><div class="nombre">'+esc(p.nombre)+'</div>'+
+      '<span class="chip">Rinde '+esc(p.rinde)+'</span>'+(p.rindeNota?'<div class="sub">'+esc(p.rindeNota)+'</div>':'')+
+      '<div class="grupo">Ingredientes de una tanda</div><ul>'+p.ingredientes.map(function(g){ return '<li><b>'+esc(g[0])+'</b> — '+esc(g[1])+'</li>'; }).join('')+'</ul>'+
+      '<div class="grupo">Cómo se hace</div><ol>'+p.pasos.map(function(s){ return '<li>'+esc(s)+'</li>'; }).join('')+'</ol>'+
+      '<div class="sub">Falta conectar el costo (precio de compra de cada insumo).</div></div>';
+  }).join('') || '<div class="sub">Todavía no hay preparaciones.</div>';
+}
+var platilloAbierto=null;
+function abrirReceta(nombre){
+  platilloAbierto=nombre; var p=MENU.find(function(m){ return m[0]===nombre; });
+  $('rTit').textContent=nombre; $('rPrecio').textContent='Precio en el menú: '+dinero(p[1]);
+  llenarSelect($('rInsumo')); pintarReceta(); $('dlgReceta').showModal();
+}
+function pintarReceta(){
+  var r=DB.recetas[platilloAbierto]||[];
+  $('rTabla').innerHTML = r.length ? r.map(function(x){ var i=insumo(x.insumoId), c=ultimoCosto(x.insumoId);
+    return '<tr><td>'+esc(i.nombre)+'</td><td>'+fmt(x.cant)+' '+esc(i.unidad)+'</td><td>'+(c==null?'—':dinero(c*x.cant))+'</td></tr>'; }).join('')
+    : '<tr><td class="sub">Todavía no tiene ingredientes.</td></tr>';
+}
+function agregarARecta(){
+  var c=parseFloat($('rCant').value); if(!(c>0)){ toast('Pon la cantidad'); return; }
+  (DB.recetas[platilloAbierto] = DB.recetas[platilloAbierto]||[]).push({insumoId:$('rInsumo').value, cant:c});
+  guardar(); $('rCant').value=''; pintarReceta(); pintarPlatillos();
+}
+
+// ---------- Historial ----------
+function pintarHist(){
+  var tipos={compra:'Compra',conteo:'Conteo',merma:'Merma'};
+  $('listaHist').innerHTML = DB.movs.slice().reverse().map(function(m){
+    var f=new Date(m.fecha), cuando=f.toLocaleDateString('es-MX',{day:'numeric',month:'short'})+' '+f.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+    var linea = m.tipo==='compra' ? '+'+fmt(m.cant)+' '+m.unidad+' · '+dinero(m.costo)+(m.proveedor?' · '+esc(m.proveedor):'')
+      : m.tipo==='conteo' ? 'Había '+fmt(m.antes)+', se contó '+fmt(m.despues)+' '+m.unidad : '-'+fmt(m.cant)+' '+m.unidad;
+    return '<div class="card"><div class="fila"><div class="nombre">'+esc(m.nombre)+'</div><span class="chip'+(m.tipo==='merma'?' alerta':'')+'">'+tipos[m.tipo]+'</span></div>'+
+      '<div class="sub">'+cuando+' · '+linea+(m.nota?' · '+esc(m.nota):'')+'</div></div>';
+  }).join('') || '<div class="vacio">Todavía no hay movimientos.</div>';
+}
+
+function pintar(){
+  pintarInsumos(); llenarSelect($('cInsumo')); llenarSelect($('kInsumo')); actCompra(); actConteo(); pintarPlatillos(); pintarPreps(); pintarHist();
+  var provs={}; DB.movs.forEach(function(m){ if(m.proveedor) provs[m.proveedor]=1; });
+  $('provs').innerHTML = Object.keys(provs).map(function(p){ return '<option value="'+esc(p)+'">'; }).join('');
+}
+$('buscarInsumo').addEventListener('input',pintarInsumos);
+// Cuando otro aparato cambia los insumos (por la central), se vuelve a leer y pintar.
+window.addEventListener('storage', function(e){ if(e.key===KEY){ cargar(); pintar(); } });
+cargar(); pintar();
+</script>
+</body>
+</html>
