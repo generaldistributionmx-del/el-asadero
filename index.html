@@ -915,7 +915,7 @@ function pintarRecibos(){
       if(m.horas) e.horas.push(m.horas); if(m.periodo && e.periodos.indexOf(m.periodo)<0) e.periodos.push(m.periodo);
       return;
     }
-    if(m.tipo==='gasto'){ otros+=m.costo; porGasto[m.nombre]=(porGasto[m.nombre]||0)+m.costo; porCat['Otros']=(porCat['Otros']||0)+m.costo; return; }
+    if(m.tipo==='gasto'){ otros+=m.costo; porGasto[m.nombre]=(porGasto[m.nombre]||0)+m.costo; porCat['Otros']=(porCat['Otros']||0)+m.costo; if(m.proveedor){ porProv[m.proveedor]=(porProv[m.proveedor]||0)+m.costo; } return; }
     ins += m.costo||0;
     var i=insumo(m.insumoId), cat=i?i.cat:'Otros';
     porCat[cat]=(porCat[cat]||0)+m.costo;
@@ -984,7 +984,7 @@ function verLugar(k){
   var nombre = (window.__lugares||[])[k]; if(nombre==null) return;
   var porRec = {};
   DB.movs.forEach(function(m){
-    if(m.tipo!=='compra' || (m.proveedor||'Sin proveedor')!==nombre) return;
+    if((m.tipo!=='compra' && !(m.tipo==='gasto' && m.proveedor && m.cat!=='Empleados')) || (m.proveedor||'Sin proveedor')!==nombre) return;
     var clave = m.recibo || ('s'+m.id);
     var r = porRec[clave] || (porRec[clave] = {fecha:m.fecha, tarj:m.tarjeta||'', nota:m.nota||'', foto:'', total:0, lineas:[]});
     r.total += m.costo||0; r.lineas.push(m); if(m.foto) r.foto = m.foto; r.id = m.recibo || '';
@@ -999,7 +999,7 @@ function verLugar(k){
     return '<div class="card"><div class="fila"><b>'+f+'</b><b>'+dinero(r.total)+'</b></div>'+
       '<div class="sub">'+esc(r.tarj ? nombreTarjeta(r.tarj) : 'Sin tarjeta anotada')+'</div><div style="margin:4px 0">'+chipDeuda(r.lineas)+' '+chipPago(r.tarj)+'</div>'+
       (r.id && r.lineas.some(function(m){ return m.porPagar; }) ? '<button class="btn mini" style="background:#c0392b;margin-bottom:6px" onclick="pagarAbrir(\''+r.id+'\')">Marcar como pagada</button>' : '')+
-      '<ul style="margin:6px 0">'+r.lineas.map(function(m){ return '<li>'+esc(m.nombre)+' — '+fmt(m.cant)+' '+esc(m.unidad)+' · '+dinero(m.costo)+'</li>'; }).join('')+'</ul>'+foto+'</div>';
+      '<ul style="margin:6px 0">'+r.lineas.map(function(m){ return '<li>'+esc(m.nombre)+(m.cant?' — '+fmt(m.cant)+' '+esc(m.unidad):'')+' · '+dinero(m.costo)+'</li>'; }).join('')+'</ul>'+foto+'</div>';
   }).join('') || '<div class="vacio">Este lugar no tiene recibos de compra.</div>';
   $('dlgLugar').showModal();
 }
