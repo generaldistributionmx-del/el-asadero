@@ -204,6 +204,11 @@
       </div>
       <button class="btn sec" onclick="rcAgregar()">+ Agregar al recibo</button>
       <div id="rcLineas" style="margin-top:10px"></div>
+      <div class="dos">
+        <div><label>Tarjeta (últimos 4)</label><input id="rcTarjeta" inputmode="numeric" maxlength="4" list="tarjetas" placeholder="Ej. 1550"></div>
+        <div><label>De quién es (opcional)</label><input id="rcTarjetaDe" placeholder="Ej. General Distribution"></div>
+      </div>
+      <datalist id="tarjetas"></datalist>
       <label>Nota (opcional)</label>
       <input id="rcNota" placeholder="Número de factura, quién compró…">
       <button class="btn" onclick="rcGuardar()">Guardar recibo</button>
@@ -216,6 +221,7 @@
         <div><label>Concepto</label><input id="gConcepto" list="conceptos" placeholder="Ej. Luz"></div>
         <div><label>Monto $</label><input id="gMonto" type="number" inputmode="decimal" step="any"></div>
       </div>
+      <label>Tarjeta (últimos 4, opcional)</label><input id="gTarjeta" inputmode="numeric" maxlength="4" list="tarjetas" placeholder="Ej. 1550">
       <datalist id="conceptos"><option value="Renta"><option value="Luz"><option value="Gas"><option value="Agua"><option value="Nómina"><option value="Reparaciones"><option value="Limpieza"><option value="Otro"></datalist>
       <button class="btn" onclick="gGuardar()">Guardar gasto</button>
     </div>
@@ -290,10 +296,10 @@ var LISTAS_MANUEL = {
               'Pan para torta','Tostadas','Chilaquiles','Family Pack']},
   // 23-oct: + leche evaporada (junto a la leche), Knorr, clamato, tajín, Valentina, jugo de naranja y sazonador.
   // No se repitieron: leche condensada (= Lechera), cuerito y sopa Maruchan (ya están en Otros).
-  Insumos:   {unidad:'pieza', nombres:['Queso para quesadilla','Salsa de queso para nachos','Queso fresco','Queso cotija','Leche','Leche evaporada','Crema',
+  Insumos:   {unidad:'pieza', nombres:['Queso para quesadilla','Salsa de queso para nachos','Queso fresco','Queso cotija','Queso rallado amarillo para nachos','Leche','Leche evaporada','Crema',
               'Media crema','Lechera','Granola','Coco rallado','Banderilla con popote',
               'Arroz grano largo 50 lb','Frijol','Azúcar granulada 25 lb',
-              'Knorr de res','Knorr de tomate','Sazonador de carne','Tajín','Salsa Valentina','Salsa Maggi','Chamoy','Clamato','Jugo de naranja']},
+              'Knorr de res','Knorr de tomate','Sazonador de carne','Tajín','Salsa Valentina','Salsa Maggi','Salsa Huichol','Salsa Siete Mares','Salsa negra','Salsa negra marisquera','Salsa ranchera La Costeña 7 oz','Chamoy','Clamato','Jugo de naranja']},
   // Especias (Manuel, 23-oct). "Black pepper" = pimienta negra (una sola). Jamaica va aquí, lo dijo él.
   Especias:  {unidad:'bolsa', nombres:['Chile guajillo','Chile de árbol','Chile chiltepín','Comino entero','Comino molido','Clavo','Orégano',
               'Pimienta negra','Hoja de laurel','Canela entera','Canela molida','Jamaica']},
@@ -316,7 +322,7 @@ var LISTAS_MANUEL = {
 };
 // Cómo compra Manuel cada cosa cuando no es la unidad de su categoría.
 // 23-oct-2026: "verduras se compra todo por caja" → todas las verduras van por caja (antes cebolla por costal y algunas por pieza).
-var UNIDADES_MANUEL = {};
+var UNIDADES_MANUEL = {'Salsa ranchera La Costeña 7 oz':'lata'};
 LISTAS_MANUEL.Verduras.unidad = 'caja';
 LISTAS_MANUEL.Verduras.nombres.forEach(function(n){ UNIDADES_MANUEL[n] = 'caja'; });
 // Sugeridos del primer borrador (ya reemplazados por las listas de Manuel; se quedan apagados). Existencia en 0: no se inventan cantidades.
@@ -678,6 +684,10 @@ function agregarARecta(){
 // ---------- Recibos y gastos ----------
 var rcLineas = [];
 function hoyISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function soloTarjeta(v){ return String(v||'').replace(/\D/g,'').slice(-4); }
+function nombreTarjeta(t){ return t ? '••' + t + (DB.tarjetas && DB.tarjetas[t] ? ' · ' + DB.tarjetas[t] : '') : 'Sin tarjeta anotada'; }
+function rcTarjetaAuto(){ var t = soloTarjeta($('rcTarjeta').value); if(t.length===4 && DB.tarjetas && DB.tarjetas[t]) $('rcTarjetaDe').value = DB.tarjetas[t]; }
+$('rcTarjeta').addEventListener('input', rcTarjetaAuto);
 function rcAct(){ var i=insumo($('rcInsumo').value); $('rcUnidad').textContent = i?i.unidad:'-'; }
 $('rcInsumo').addEventListener('input',rcAct);
 $('rcPer').addEventListener('input',pintarRecibos);
@@ -698,10 +708,11 @@ function pintarRcLineas(){
 function rcGuardar(){
   if(!rcLineas.length){ toast('Agrega al menos un insumo'); return; }
   var fecha = $('rcFecha').value ? new Date($('rcFecha').value+'T12:00:00').toISOString() : new Date().toISOString();
-  var rid = nuevoId(), prov = $('rcProv').value.trim(), nota = $('rcNota').value.trim(), tot=0;
+  var rid = nuevoId(), prov = $('rcProv').value.trim(), nota = $('rcNota').value.trim(), tot=0, tarj = soloTarjeta($('rcTarjeta').value);
+  if(tarj && $('rcTarjetaDe').value.trim()){ DB.tarjetas = DB.tarjetas || {}; DB.tarjetas[tarj] = $('rcTarjetaDe').value.trim(); }
   rcLineas.forEach(function(l){
     var i=insumo(l.insumoId); tot+=l.costo;
-    DB.movs.push({id:nuevoId(),fecha:fecha,tipo:'compra',insumoId:i.id,nombre:i.nombre,unidad:i.unidad,cant:l.cant,costo:l.costo,proveedor:prov,nota:nota,recibo:rid});
+    DB.movs.push({id:nuevoId(),fecha:fecha,tipo:'compra',insumoId:i.id,nombre:i.nombre,unidad:i.unidad,cant:l.cant,costo:l.costo,proveedor:prov,nota:nota,recibo:rid,tarjeta:tarj});
     i.stock += l.cant;
     if(i.ocupo>0) i.ocupo = Math.max(0, i.ocupo - l.cant);
   });
@@ -712,7 +723,7 @@ function gGuardar(){
   var c=$('gConcepto').value.trim(), m=parseFloat($('gMonto').value);
   if(!c){ toast('Falta el concepto'); return; }
   if(!(m>0)){ toast('Falta el monto'); return; }
-  DB.movs.push({id:nuevoId(),fecha:new Date().toISOString(),tipo:'gasto',nombre:c,costo:m});
+  DB.movs.push({id:nuevoId(),fecha:new Date().toISOString(),tipo:'gasto',nombre:c,costo:m,tarjeta:soloTarjeta($('gTarjeta').value)});
   guardar(); $('gConcepto').value=''; $('gMonto').value=''; pintar(); toast('Gasto guardado: '+dinero(m));
 }
 function movsDelPeriodo(){
@@ -750,16 +761,18 @@ function filaBarra(nombre, monto, max, extra){
 }
 function pintarRecibos(){
   llenarPeriodos();
-  var ms=movsDelPeriodo(), total=0, ins=0, otros=0, porCat={}, porIns={}, porGasto={}, recs={}, porProv={};
+  $('tarjetas').innerHTML = Object.keys(DB.tarjetas||{}).map(function(t){ return '<option value="'+esc(t)+'">'+esc(DB.tarjetas[t])+'</option>'; }).join('');
+  var ms=movsDelPeriodo(), total=0, ins=0, otros=0, porCat={}, porIns={}, porGasto={}, recs={}, porProv={}, porTarj={};
   ms.forEach(function(m){
     total += m.costo||0;
+    porTarj[m.tarjeta||''] = (porTarj[m.tarjeta||'']||0) + (m.costo||0);
     if(m.tipo==='gasto'){ otros+=m.costo; porGasto[m.nombre]=(porGasto[m.nombre]||0)+m.costo; return; }
     ins += m.costo||0;
     var i=insumo(m.insumoId), cat=i?i.cat:'Otros';
     porCat[cat]=(porCat[cat]||0)+m.costo;
     var o=porIns[m.nombre]||(porIns[m.nombre]={costo:0,cant:0,unidad:m.unidad,veces:0}); o.costo+=m.costo; o.cant+=m.cant; o.veces++;
     var pv=m.proveedor||'Sin proveedor'; porProv[pv]=(porProv[pv]||0)+m.costo;
-    if(m.recibo){ var r=recs[m.recibo]||(recs[m.recibo]={fecha:m.fecha,prov:m.proveedor,total:0,n:0}); r.total+=m.costo; r.n++; }
+    if(m.recibo){ var r=recs[m.recibo]||(recs[m.recibo]={fecha:m.fecha,prov:m.proveedor,tarj:m.tarjeta||'',total:0,n:0}); r.total+=m.costo; r.n++; }
   });
   function ordenar(o){ return Object.keys(o).sort(function(a,b){ var x=typeof o[a]==='number'?o[a]:o[a].costo, y=typeof o[b]==='number'?o[b]:o[b].costo; return y-x; }); }
   var h='<div class="card"><div class="sub">Total gastado</div><div class="num" style="font-size:30px">'+dinero(total)+'</div>'+
@@ -770,13 +783,15 @@ function pintarRecibos(){
     if(cats.length) h+='<div class="card"><div class="grupo">Por categoría</div>'+cats.map(function(c){ return filaBarra(c,porCat[c],maxC); }).join('')+'</div>';
     var nom=ordenar(porIns), maxI=nom.length?porIns[nom[0]].costo:0;
     if(nom.length) h+='<div class="card"><div class="grupo">Por insumo</div>'+nom.map(function(n){ var o=porIns[n]; return filaBarra(n,o.costo,maxI,fmt(o.cant)+' '+esc(o.unidad)+' · '+o.veces+(o.veces>1?' compras':' compra')); }).join('')+'</div>';
+    var tks=ordenar(porTarj), maxT=tks.length?porTarj[tks[0]]:0;
+    if(tks.length) h+='<div class="card"><div class="grupo">Por tarjeta</div>'+tks.map(function(t){ return filaBarra(nombreTarjeta(t),porTarj[t],maxT); }).join('')+'</div>';
     var pvs=ordenar(porProv), maxP=pvs.length?porProv[pvs[0]]:0;
     if(pvs.length) h+='<div class="card"><div class="grupo">Por lugar</div>'+pvs.map(function(n){ return filaBarra(n,porProv[n],maxP); }).join('')+'</div>';
     var gs=ordenar(porGasto), maxG=gs.length?porGasto[gs[0]]:0;
     if(gs.length) h+='<div class="card"><div class="grupo">Otros gastos</div>'+gs.map(function(g){ return filaBarra(g,porGasto[g],maxG); }).join('')+'</div>';
     var rl=Object.keys(recs).sort(function(a,b){ return recs[b].fecha<recs[a].fecha?-1:1; }).slice(0,10);
     if(rl.length) h+='<div class="card"><div class="grupo">Recibos recientes</div>'+rl.map(function(k){ var r=recs[k], f=new Date(r.fecha).toLocaleDateString('es-MX',{day:'numeric',month:'short'});
-      return '<div class="fila" style="padding:4px 0"><div>'+f+' · '+esc(r.prov||'Sin proveedor')+' <span class="sub">'+r.n+(r.n>1?' renglones':' renglón')+'</span></div><b>'+dinero(r.total)+'</b></div>'; }).join('')+'</div>';
+      return '<div class="fila" style="padding:4px 0"><div>'+f+' · '+esc(r.prov||'Sin proveedor')+' <span class="sub">'+r.n+(r.n>1?' renglones':' renglón')+(r.tarj?' · ••'+r.tarj:'')+'</span></div><b>'+dinero(r.total)+'</b></div>'; }).join('')+'</div>';
   }
   var cm = cierresMes(), ks = Object.keys(cm).sort().reverse();
   if(ks.length){
