@@ -190,6 +190,24 @@
       <button class="btn" onclick="rcGuardar()">Guardar recibo</button>
     </div>
 
+    <div id="rbSec" class="oculto">
+    <h2 style="margin-top:18px">Reembolso</h2>
+    <div class="aviso">Cuando se le devuelve a alguien el dinero que puso con su tarjeta personal. No es un gasto nuevo: sólo baja lo que se le debe.</div>
+    <div class="card">
+      <label>¿A quién se le devuelve?</label>
+      <select id="rbTarjeta" onchange="reemSugerir()"></select>
+      <div class="dos">
+        <div><label>Monto $</label><input id="rbMonto" type="number" inputmode="decimal" step="any"></div>
+        <div><label>Fecha</label><input id="rbFecha" type="date"></div>
+      </div>
+      <label>Forma de pago</label>
+      <select id="rbMetodo"><option>Cheque del asadero</option><option>Transferencia del asadero</option><option>Efectivo</option></select>
+      <label>Nota (opcional)</label>
+      <input id="rbNota" placeholder="Ej. número de cheque, Restaurant Depot…">
+      <button class="btn" onclick="reemGuardar()">Guardar reembolso</button>
+    </div>
+    </div>
+
     <h2 style="margin-top:18px">Empleados</h2>
     <div class="aviso">Lo que se paga a cada empleado (nómina). Escribe el nombre, el periodo y lo que se le paga; se suma solo a los gastos.</div>
     <div class="card">
@@ -766,6 +784,31 @@ function rcGuardar(){
   guardar(); rcLineas=[]; $('rcNota').value=''; pintarRcLineas(); pintar();
   toast('Recibo guardado: '+dinero(tot));
 }
+// Reembolso: devolver dinero que alguien puso con su tarjeta personal. NO es un gasto (el gasto ya se contó al comprar):
+// sólo baja lo que se le debe. Se guarda como movimiento tipo 'reembolso' con la terminación de la tarjeta.
+function tarjetasReem(){ return Object.keys(DB.reembolsar||{}).filter(function(t){ return DB.reembolsar[t]; }); }
+function reemTotales(t){
+  var g=0, r=0;
+  DB.movs.forEach(function(m){ if(m.tarjeta!==t) return; if(m.tipo==='compra'||m.tipo==='gasto') g+=m.costo||0; else if(m.tipo==='reembolso') r+=m.costo||0; });
+  return {g:g, r:r, p:Math.round((g-r)*100)/100};
+}
+// Etiqueta de colores: verde = pagado con dinero del asadero (o ya reembolsado); naranja = tarjeta personal, falta devolver.
+function chipPago(t){
+  if(!t) return '';
+  var verde='background:#1f7a3a;color:#fff', naranja='background:#d9822b;color:#fff';
+  if(DB.reembolsar && DB.reembolsar[t]){ return reemTotales(t).p>0.004 ? '<span class="chip" style="'+naranja+'">Tarjeta personal · falta devolver</span>' : '<span class="chip" style="'+verde+'">Reembolsado</span>'; }
+  return '<span class="chip" style="'+verde+'">Pagado con dinero del asadero</span>';
+}
+function reemSugerir(){ var t=$('rbTarjeta').value; if(!t) return; var p=reemTotales(t).p; $('rbMonto').placeholder = p>0 ? 'Falta '+p.toFixed(2) : '0.00'; }
+function reemGuardar(){
+  var t=$('rbTarjeta').value, m=parseFloat($('rbMonto').value);
+  if(!t){ toast('Escoge la tarjeta'); return; }
+  if(!(m>0)){ toast('Falta el monto'); return; }
+  var fecha = $('rbFecha').value ? new Date($('rbFecha').value+'T12:00:00').toISOString() : new Date().toISOString();
+  DB.movs.push({id:nuevoId(),fecha:fecha,tipo:'reembolso',tarjeta:t,costo:m,metodo:$('rbMetodo').value,nota:$('rbNota').value.trim()});
+  guardar(); $('rbMonto').value=''; $('rbNota').value=''; pintar(); toast('Reembolso guardado: '+dinero(m));
+}
+
 // Empleados: cada pago a un empleado es un gasto de categoría "Empleados" (se suma a los gastos, aparte de los insumos).
 function nomGuardar(){
   var n=$('nEmpleado').value.trim(), m=parseFloat($('nMonto').value);
@@ -854,9 +897,6 @@ function pintarRecibos(){
     if(nom.length) h+='<div class="card"><div class="grupo">Por insumo</div>'+nom.map(function(n){ var o=porIns[n]; return filaBarra(n,o.costo,maxI,fmt(o.cant)+' '+esc(o.unidad)+' · '+o.veces+(o.veces>1?' compras':' compra')); }).join('')+'</div>';
     var tks=ordenar(porTarj), maxT=tks.length?porTarj[tks[0]]:0;
     if(tks.length) h+='<div class="card"><div class="grupo">Por tarjeta</div>'+tks.map(function(t){ return filaBarra(nombreTarjeta(t),porTarj[t],maxT); }).join('')+'</div>';
-    // Tarjetas personales (DB.reembolsar): lo gastado con ellas hay que devolverlo.
-    var reem = Object.keys(DB.reembolsar||{}).filter(function(t){ return DB.reembolsar[t] && porTarj[t]>0; });
-    if(reem.length) h+='<div class="card"><div class="grupo">Por reembolsar</div><div class="sub" style="margin-bottom:6px">Gastado con una tarjeta personal: hay que devolver ese dinero.</div>'+reem.map(function(t){ return filaBarra(nombreTarjeta(t),porTarj[t],porTarj[t]); }).join('')+'</div>';
     var pvs=ordenar(porProv), maxP=pvs.length?porProv[pvs[0]]:0;
     window.__lugares = pvs;
     if(pvs.length) h+='<div class="card"><div class="grupo">Por lugar</div><div class="sub" style="margin-bottom:6px">Toca un lugar para ver todos sus recibos'+(window.AS_NUBE?' y sus fotos':'')+'.</div>'+pvs.map(function(n,k){ return '<div style="cursor:pointer" onclick="verLugar('+k+')">'+filaBarra(n,porProv[n],maxP)+'</div>'; }).join('')+'</div>';
@@ -864,7 +904,19 @@ function pintarRecibos(){
     if(gs.length) h+='<div class="card"><div class="grupo">Otros gastos</div>'+gs.map(function(g){ return filaBarra(g,porGasto[g],maxG); }).join('')+'</div>';
     var rl=Object.keys(recs).sort(function(a,b){ return recs[b].fecha<recs[a].fecha?-1:1; }).slice(0,10);
     if(rl.length) h+='<div class="card"><div class="grupo">Recibos recientes</div>'+rl.map(function(k){ var r=recs[k], f=new Date(r.fecha).toLocaleDateString('es-MX',{day:'numeric',month:'short'});
-      return '<div class="fila" style="padding:4px 0"><div>'+f+' · '+esc(r.prov||'Sin proveedor')+' <span class="sub">'+r.n+(r.n>1?' renglones':' renglón')+(r.tarj?' · ••'+r.tarj:'')+'</span></div><b>'+dinero(r.total)+'</b></div>'; }).join('')+'</div>';
+      return '<div class="fila" style="padding:4px 0"><div>'+f+' · '+esc(r.prov||'Sin proveedor')+' <span class="sub">'+r.n+(r.n>1?' renglones':' renglón')+(r.tarj?' · ••'+r.tarj:'')+'</span> '+chipPago(r.tarj)+'</div><b>'+dinero(r.total)+'</b></div>'; }).join('')+'</div>';
+  }
+  // Por reembolsar: tarjetas personales (DB.reembolsar). Siempre cuenta todo el tiempo, no sólo el periodo escogido.
+  var reem = tarjetasReem();
+  $('rbSec').classList.toggle('oculto', !reem.length);
+  if(reem.length){
+    var v = $('rbTarjeta').value;
+    $('rbTarjeta').innerHTML = reem.map(function(t){ return '<option value="'+esc(t)+'">'+esc(nombreTarjeta(t))+'</option>'; }).join('');
+    if(v && reem.indexOf(v)>=0) $('rbTarjeta').value = v;
+    reemSugerir();
+    h += '<div class="card"><div class="grupo">Por reembolsar</div><div class="sub" style="margin-bottom:6px">Lo gastado con una tarjeta personal se devuelve con cheque o transferencia del asadero. Devolverlo no es un gasto nuevo.</div>'+
+      reem.map(function(t){ var x=reemTotales(t), ok = x.p<=0.004;
+        return '<div style="padding:6px 0;border-bottom:1px dashed var(--borde)"><div class="fila"><b>'+esc(nombreTarjeta(t))+'</b><b style="color:'+(ok?'#1f7a3a':'#d9822b')+'">'+(ok?'Todo reembolsado':'Falta '+dinero(x.p))+'</b></div><div class="sub">Gastado '+dinero(x.g)+' · Ya reembolsado '+dinero(x.r)+'</div></div>'; }).join('')+'</div>';
   }
   var cm = cierresMes(), ks = Object.keys(cm).sort().reverse();
   if(ks.length){
@@ -896,7 +948,7 @@ function verLugar(k){
     var foto = r.foto ? (window.AS_NUBE ? '<button class="btn sec mini" onclick="verFoto(\''+r.foto+'\','+i+')">📷 Ver recibo</button><div id="foto'+i+'"></div>' : '<div class="sub">La foto sólo se ve en la versión de internet.</div>')
                       : '<div class="sub">Sin foto del recibo</div>';
     return '<div class="card"><div class="fila"><b>'+f+'</b><b>'+dinero(r.total)+'</b></div>'+
-      '<div class="sub">'+esc(r.tarj ? nombreTarjeta(r.tarj) : 'Sin tarjeta anotada')+'</div>'+
+      '<div class="sub">'+esc(r.tarj ? nombreTarjeta(r.tarj) : 'Sin tarjeta anotada')+'</div><div style="margin:4px 0">'+chipPago(r.tarj)+'</div>'+
       '<ul style="margin:6px 0">'+r.lineas.map(function(m){ return '<li>'+esc(m.nombre)+' — '+fmt(m.cant)+' '+esc(m.unidad)+' · '+dinero(m.costo)+'</li>'; }).join('')+'</ul>'+foto+'</div>';
   }).join('') || '<div class="vacio">Este lugar no tiene recibos de compra.</div>';
   $('dlgLugar').showModal();
@@ -1000,12 +1052,13 @@ if(window.AS_NUBE){
 
 // ---------- Historial ----------
 function pintarHist(){
-  var tipos={compra:'Compra',conteo:'Conteo',merma:'Merma',gasto:'Gasto'};
+  var tipos={compra:'Compra',conteo:'Conteo',merma:'Merma',gasto:'Gasto',reembolso:'Reembolso'};
   $('listaHist').innerHTML = DB.movs.slice().reverse().map(function(m){
     var f=new Date(m.fecha), cuando=f.toLocaleDateString('es-MX',{day:'numeric',month:'short'})+' '+f.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-    var linea = m.tipo==='gasto' ? dinero(m.costo) : m.tipo==='compra' ? '+'+fmt(m.cant)+' '+m.unidad+' · '+dinero(m.costo)+(m.proveedor?' · '+esc(m.proveedor):'')
+    var nombreMov = m.tipo==='reembolso' ? 'Reembolso · '+nombreTarjeta(m.tarjeta) : m.nombre;
+    var linea = m.tipo==='reembolso' ? dinero(m.costo)+(m.metodo?' · '+esc(m.metodo):'') : m.tipo==='gasto' ? dinero(m.costo) : m.tipo==='compra' ? '+'+fmt(m.cant)+' '+m.unidad+' · '+dinero(m.costo)+(m.proveedor?' · '+esc(m.proveedor):'')
       : m.tipo==='conteo' ? 'Había '+fmt(m.antes)+', se contó '+fmt(m.despues)+' '+m.unidad : '-'+fmt(m.cant)+' '+m.unidad;
-    return '<div class="card"><div class="fila"><div class="nombre">'+esc(m.nombre)+'</div><span class="chip'+(m.tipo==='merma'?' alerta':'')+'">'+tipos[m.tipo]+'</span></div>'+
+    return '<div class="card"><div class="fila"><div class="nombre">'+esc(nombreMov)+'</div><span class="chip'+(m.tipo==='merma'?' alerta':'')+'">'+tipos[m.tipo]+'</span></div>'+
       '<div class="sub">'+cuando+' · '+linea+(m.nota?' · '+esc(m.nota):'')+'</div></div>';
   }).join('') || '<div class="vacio">Todavía no hay movimientos.</div>';
 }
