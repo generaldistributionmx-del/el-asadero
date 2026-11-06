@@ -78,11 +78,10 @@
 </header>
 <nav>
   <button data-tab="insumos" class="on">Insumos</button>
-  <button data-tab="compra">Compra</button>
   <button data-tab="conteo">Conteo</button>
   <button data-tab="platillos">Platillos</button>
   <button data-tab="recetas">Recetas</button>
-  <button data-tab="recibos">Recibos</button>
+  <button data-tab="recibos">Compras</button>
   <button data-tab="historial">Historial</button>
 </nav>
 
@@ -102,26 +101,6 @@
     </div>
     <div id="listaInsumos"></div>
     <button class="btn sec" onclick="abrirInsumo()">+ Agregar insumo</button>
-  </section>
-
-  <!-- COMPRA -->
-  <section id="compra" class="oculto">
-    <h2>Registrar compra</h2>
-    <div class="card">
-      <label>Proveedor</label>
-      <input id="cProv" list="provs" placeholder="Ej. Restaurant Depot, Costco…">
-      <datalist id="provs"></datalist>
-      <label>Insumo</label>
-      <select id="cInsumo"></select>
-      <div class="dos">
-        <div><label>Cantidad (<span id="cUnidad">-</span>)</label><input id="cCant" type="number" inputmode="decimal" step="any"></div>
-        <div><label>Costo total $</label><input id="cCosto" type="number" inputmode="decimal" step="any"></div>
-      </div>
-      <div class="sub" id="cUnit" style="margin-top:8px"></div>
-      <label>Nota (opcional)</label>
-      <input id="cNota" placeholder="Factura, quién recibió…">
-      <button class="btn" onclick="guardarCompra()">Guardar compra</button>
-    </div>
   </section>
 
   <!-- CONTEO -->
@@ -161,7 +140,7 @@
 
   <!-- RECIBOS: gastos de insumos y otros gastos, con totales por periodo -->
   <section id="recibos" class="oculto">
-    <h2>Recibos y gastos</h2>
+    <h2>Compras y gastos</h2>
     <div class="aviso">Aquí se captura cada recibo de compra y se ve cuánto se gasta en cada insumo y categoría. Todo se suma solo.</div>
     <div class="card oculto" id="rcFoto">
       <div class="nombre">📷 Subir recibo</div>
@@ -193,7 +172,7 @@
     <h2 style="margin-top:18px">Nuevo recibo</h2>
     <div class="card">
       <div class="dos">
-        <div><label>Proveedor</label><input id="rcProv" list="provs" placeholder="Ej. Restaurant Depot"></div>
+        <div><label>Proveedor</label><input id="rcProv" list="provs" placeholder="Ej. Restaurant Depot"><datalist id="provs"></datalist></div>
         <div><label>Fecha</label><input id="rcFecha" type="date"></div>
       </div>
       <label>Insumo</label>
@@ -651,26 +630,6 @@ function llenarSelect(sel){
   if(v && insumo(v) && insumo(v).activo) sel.value=v;
 }
 
-// ---------- Compra ----------
-function actCompra(){
-  var i=insumo($('cInsumo').value); $('cUnidad').textContent = i?i.unidad:'-';
-  var c=parseFloat($('cCant').value), t=parseFloat($('cCosto').value);
-  $('cUnit').textContent = (c>0 && t>=0) ? 'Sale a '+dinero(t/c)+' por '+i.unidad : '';
-}
-['cInsumo','cCant','cCosto'].forEach(function(id){ $(id).addEventListener('input',actCompra); });
-function guardarCompra(){
-  var i=insumo($('cInsumo').value), c=parseFloat($('cCant').value), t=parseFloat($('cCosto').value);
-  if(!i || !(c>0)){ toast('Falta la cantidad'); return; }
-  if(!(t>=0)){ toast('Falta el costo'); return; }
-  DB.movs.push({id:nuevoId(),fecha:new Date().toISOString(),tipo:'compra',insumoId:i.id,nombre:i.nombre,unidad:i.unidad,
-    cant:c,costo:t,proveedor:$('cProv').value.trim(),nota:$('cNota').value.trim()});
-  i.stock += c;
-  if(i.ocupo>0) i.ocupo = Math.max(0, i.ocupo - c); // lo comprado se descuenta de "Ocupo"
-  guardar();
-  $('cCant').value=''; $('cCosto').value=''; $('cNota').value=''; actCompra(); pintar();
-  toast('Compra guardada: +'+fmt(c)+' '+i.unidad+' de '+i.nombre);
-}
-
 // ---------- Conteo / merma ----------
 function actConteo(){
   var i=insumo($('kInsumo').value);
@@ -932,7 +891,7 @@ function pintarHist(){
 }
 
 function pintar(){
-  pintarInsumos(); llenarSelect($('cInsumo')); llenarSelect($('kInsumo')); actCompra(); actConteo(); pintarPlatillos(); pintarPreps(); pintarHist(); llenarSelect($('rcInsumo')); rcAct(); pintarRecibos(); pintarRcLineas();
+  pintarInsumos(); llenarSelect($('kInsumo')); actConteo(); pintarPlatillos(); pintarPreps(); pintarHist(); llenarSelect($('rcInsumo')); rcAct(); pintarRecibos(); pintarRcLineas();
   var provs={}; DB.movs.forEach(function(m){ if(m.proveedor) provs[m.proveedor]=1; });
   $('provs').innerHTML = Object.keys(provs).map(function(p){ return '<option value="'+esc(p)+'">'; }).join('');
 }
