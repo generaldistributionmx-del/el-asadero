@@ -263,15 +263,15 @@ AS_MENU_INICIAL.forEach(function(c){ if(c[0]==='Refrescos' || c[0]==='Dulces y b
 var LISTAS_MANUEL = {
   Carnes:    {unidad:'lb', nombres:['Carne asada picada','Carne asada en bistec','Pechuga de pollo picada','Camarón','Adobada','Chorizo',
               'Lengua','Tripa cocida','Menudo','Pata de res','Chamorro','Carne para birria (bulk)','Tocino','Jamón']},
-  Verduras:  {unidad:'lb', nombres:['Cebolla','Cebolla morada','Cilantro','Limón','Jitomate','Tomatillo','Chile jalapeño','Aguacate','Lechuga','Jícama','Pepino',
+  Verduras:  {unidad:'lb', nombres:['Cebolla blanca 25 lb','Cebolla morada','Cilantro (60 ct)','Limón (200 ct)','Jitomate Roma XL','Tomatillo','Chile jalapeño','Aguacate','Lechuga','Jícama','Pepino',
               'Mango','Plátano','Piña','Fresa','Melón','Sandía','Naranja']},
-  Tortillas: {unidad:'paquete', nombres:['Tortilla para taco','Tortilla para quesadillas','Tortilla para burrito','Tortilla para birria',
+  Tortillas: {unidad:'paquete', nombres:['Tortilla de maíz blanca 4.5" (60 ct)','Tortilla para quesadillas','Tortilla para burrito','Tortilla para birria',
               'Pan para torta','Tostadas','Chilaquiles','Family Pack']},
   // 23-oct: + leche evaporada (junto a la leche), Knorr, clamato, tajín, Valentina, jugo de naranja y sazonador.
   // No se repitieron: leche condensada (= Lechera), cuerito y sopa Maruchan (ya están en Otros).
-  Insumos:   {unidad:'pieza', nombres:['Queso para quesadilla','Queso para nachos','Queso fresco','Queso cotija','Leche','Leche evaporada','Crema',
+  Insumos:   {unidad:'pieza', nombres:['Queso para quesadilla','Salsa de queso para nachos','Queso fresco','Queso cotija','Leche','Leche evaporada','Crema',
               'Media crema','Lechera','Granola','Coco rallado','Banderilla con popote',
-              'Arroz','Frijol','Azúcar',
+              'Arroz grano largo 50 lb','Frijol','Azúcar granulada 25 lb',
               'Knorr de res','Knorr de tomate','Sazonador de carne','Tajín','Salsa Valentina','Salsa Maggi','Chamoy','Clamato','Jugo de naranja']},
   // Especias (Manuel, 23-oct). "Black pepper" = pimienta negra (una sola). Jamaica va aquí, lo dijo él.
   Especias:  {unidad:'bolsa', nombres:['Chile guajillo','Chile de árbol','Chile chiltepín','Comino entero','Comino molido','Clavo','Orégano',
@@ -280,7 +280,7 @@ var LISTAS_MANUEL = {
               'Tapa 32 oz plana','Tapa 32 oz ovalada','Tapa 20 oz','Tapa 16 oz plana','Tapa 16 oz ovalada',
               'Vaso de foam 32 oz','Tapa plana 32 oz para foam','Vaso de foam 16 oz para esquite','Vaso de foam 14 oz','Vaso 6 oz para consomé',
               'Vasito 2 oz para salsa','Tapa para vasito 2 oz',
-              'Cucharas','Tenedores','Cuchillos','Popotes','Servilletas','Picadientes',
+              'Cucharas','Tenedores','Cuchillos','Popotes envueltos 10.25"','Servilletas','Picadientes',
               'Platos lisos redondos para taco','Platos para llevar planos','Contenedor de foam para burrito grande','Contenedor de foam para burrito chico',
               'Papel para burrito','Bolsas de plástico para llevar','Bolsitas para verdura (para llevar)','Bolsitas Ziploc chicas',
               'Papel toalla (rollo)','Papel térmico (rollo)']},
@@ -342,6 +342,31 @@ function cargar(){
            movs: [], recetas: {} };
   }
   DB.insumos.forEach(function(i){ i.cat = categoriaNueva(i.cat); });
+  // Nombres y unidades como vienen en los recibos: se renombra lo ya guardado (y su historial), nada se borra.
+  var RENOMBRES = [
+    ['Tortilla para taco','Tortilla de maíz blanca 4.5" (60 ct)','caja'],
+    ['Queso para nachos','Salsa de queso para nachos','lata'],
+    ['Tomatillo','Tomatillo','caja'],
+    ['Cilantro','Cilantro (60 ct)','caja'],
+    ['Jitomate','Jitomate Roma XL','caja'],
+    ['Limón','Limón (200 ct)','caja'],
+    ['Cebolla','Cebolla blanca 25 lb','costal'],
+    ['Popotes','Popotes envueltos 10.25"','caja'],
+    ['Arroz','Arroz grano largo 50 lb','costal'],
+    ['Azúcar','Azúcar granulada 25 lb','costal'],
+    ['Mayonesa','Mayonesa Chef\'s Quality 1 galón','galón'],
+    ['Harina de maíz (masa)','Harina de maíz Maseca 50 lb','costal']
+  ];
+  DB.renombrados = DB.renombrados || {};
+  RENOMBRES.forEach(function(r){
+    if(DB.renombrados[r[0]]) return;
+    var i = DB.insumos.find(function(x){ return x.nombre===r[0]; });
+    if(!i) return;
+    if(DB.insumos.some(function(x){ return x!==i && x.nombre===r[1]; })) return;
+    i.nombre = r[1]; i.unidad = r[2]; i.propio = true;
+    DB.movs.forEach(function(m){ if(m.insumoId===i.id){ m.nombre = r[1]; m.unidad = r[2]; } });
+    DB.renombrados[r[0]] = r[1];
+  });
   // Aplica cada lista de Manuel cuando es nueva o cambió (se compara con la última que se aplicó).
   if(!DB.listasAplicadas || typeof DB.listasAplicadas[Object.keys(DB.listasAplicadas)[0]] !== 'string') DB.listasAplicadas = {};
   Object.keys(LISTAS_MANUEL).forEach(function(cat){
