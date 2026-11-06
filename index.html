@@ -113,6 +113,10 @@
   <section id="recetas" class="oculto">
     <h2>Recetas</h2>
     <div class="aviso">Las recetas de la cocina, como las dicta José: ingredientes de una tanda y cómo se hace.</div>
+    <div id="cabPrep" class="oculto" style="margin-bottom:10px">
+      <button class="btn sec mini" onclick="verCarpetaPrep(null)">‹ Carpetas</button>
+      <span class="grupo" id="nomPrep" style="margin-left:8px"></span>
+    </div>
     <div id="listaPreps"></div>
   </section>
 
@@ -628,14 +632,38 @@ function pintarPlatillos(){
   });
   $('listaPlatillos').innerHTML=html;
 }
+// Carpetas de Recetas (como las categorías de Insumos). Cada receta se acomoda por su clave; las que no tengan carpeta van a "Otros platillos".
+var CARPETAS_PREPS = [
+  {nombre:'Aguas frescas', ic:'🥤', claves:['horchata','piña','sandia','fresa','melon']},
+  {nombre:'Birria', ic:'🍲', claves:[]},
+  {nombre:'Otros platillos', ic:'🍽️', claves:null}
+];
+var carpetaPrep = null;
+function carpetaDe(p){
+  var f = CARPETAS_PREPS.find(function(c){ return c.claves && c.claves.indexOf(p.clave)>=0; });
+  return f ? f.nombre : 'Otros platillos';
+}
+function verCarpetaPrep(n){ carpetaPrep = n; pintarPreps(); window.scrollTo(0,0); }
 function pintarPreps(){
-  $('listaPreps').innerHTML = (DB.preps||[]).map(function(p){
+  var todas = DB.preps||[];
+  $('cabPrep').classList.toggle('oculto', !carpetaPrep);
+  if(!carpetaPrep){
+    $('listaPreps').innerHTML = '<div class="cats">' + CARPETAS_PREPS.map(function(c){
+      var n = todas.filter(function(p){ return carpetaDe(p)===c.nombre; }).length;
+      if(!n && c.claves===null) return '';
+      return '<div class="card cat" onclick="verCarpetaPrep(\''+c.nombre+'\')"><div class="ic">'+c.ic+'</div><div class="nombre">'+c.nombre+'</div><div class="sub">'+n+' receta'+(n===1?'':'s')+'</div></div>';
+    }).join('') + '</div>';
+    return;
+  }
+  var car = CARPETAS_PREPS.find(function(c){ return c.nombre===carpetaPrep; });
+  $('nomPrep').textContent = car.ic+' '+car.nombre;
+  $('listaPreps').innerHTML = todas.filter(function(p){ return carpetaDe(p)===carpetaPrep; }).map(function(p){
     return '<div class="card"><div class="nombre">'+esc(p.nombre)+'</div>'+
       '<span class="chip">Rinde '+esc(p.rinde)+'</span>'+(p.rindeNota?'<div class="sub">'+esc(p.rindeNota)+'</div>':'')+
       '<div class="grupo">Ingredientes de una tanda</div><ul>'+p.ingredientes.map(function(g){ return '<li><b>'+esc(g[0])+'</b> — '+esc(g[1])+'</li>'; }).join('')+'</ul>'+
       '<div class="grupo">Cómo se hace</div><ol>'+p.pasos.map(function(s){ return '<li>'+esc(s)+'</li>'; }).join('')+'</ol>'+
       '<div class="sub">Falta conectar el costo (precio de compra de cada insumo).</div></div>';
-  }).join('') || '<div class="sub">Todavía no hay preparaciones.</div>';
+  }).join('') || '<div class="vacio">Todavía no hay recetas en esta carpeta.</div>';
 }
 var platilloAbierto=null;
 function abrirReceta(nombre){
