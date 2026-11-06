@@ -11,10 +11,8 @@
 
   function pinGuardado(){ try { return localStorage.getItem(PIN_KEY) || ''; } catch(e){ return ''; } }
   function guardarPin(p){ try { if(p) setOriginal.call(localStorage, PIN_KEY, p); else localStorage.removeItem(PIN_KEY); } catch(e){} }
-  function pedirPin(msg){
-    var p = window.prompt((msg ? msg + '\n\n' : '') + 'Escribe el PIN de empleados de El Asadero:');
-    p = (p || '').trim(); guardarPin(p); return p;
-  }
+  // Ya no se pregunta con una ventanita: la página muestra su propia pantalla de entrada (candado con PIN).
+  function pedirPin(msg){ return ''; }
 
   function poner(clave, doc){
     aplicando = true; ultimo[clave] = JSON.stringify(doc);

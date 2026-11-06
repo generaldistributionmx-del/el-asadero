@@ -72,9 +72,24 @@
 </style>
 </head>
 <body>
+<!-- Candado con PIN (sólo en la versión de internet) -->
+<div id="bloqueo" class="oculto" style="position:fixed;top:0;left:0;right:0;bottom:0;z-index:100;background:var(--negro);overflow:auto">
+  <div style="max-width:340px;margin:0 auto;padding:40px 20px;text-align:center">
+    <img src="logo.png" alt="El Asadero Mexican Food" style="max-width:240px;width:100%">
+    <h2>Entrar</h2>
+    <div class="sub" style="margin-bottom:10px">Escribe el PIN de empleados.</div>
+    <input id="bloqueoPin" type="password" inputmode="numeric" autocomplete="off" placeholder="PIN" style="text-align:center;font-size:22px">
+    <button class="btn" onclick="entrarApp()">Entrar</button>
+    <div id="bloqueoMsg" class="sub" style="margin-top:10px;min-height:20px"></div>
+  </div>
+</div>
 <header>
   <img src="logo.png" alt="El Asadero Mexican Food">
   <div class="lema">CONTROL DE INSUMOS</div>
+  <div id="barraSesion" class="oculto" style="margin-top:6px">
+    <button class="btn sec mini" onclick="actualizarApp()">↻ Actualizar</button>
+    <button class="btn sec mini" onclick="salirApp()" style="margin-left:8px">Salir</button>
+  </div>
 </header>
 <nav>
   <button data-tab="insumos" class="on">Insumos</button>
@@ -908,6 +923,34 @@ if(window.AS_NUBE){
   $('rfCamara').addEventListener('change', function(){ rfPrepararFoto(this.files[0]); });
   $('rfGaleria').addEventListener('change', function(){ rfPrepararFoto(this.files[0]); });
   setInterval(function(){ rfRefrescar(false); }, 15000);
+}
+
+// ---------- Sesión (sólo en la versión de internet): Salir, Actualizar y candado con PIN ----------
+function mostrarBloqueo(msg){ $('bloqueo').classList.remove('oculto'); $('bloqueoMsg').textContent = msg||''; setTimeout(function(){ $('bloqueoPin').focus(); },50); }
+function salirApp(){
+  if(!confirm('¿Salir de la aplicación? Para volver a entrar hay que escribir el PIN.')) return;
+  try { localStorage.removeItem('asadero_pin_nube'); } catch(e){}
+  $('bloqueoPin').value=''; mostrarBloqueo('');
+}
+function entrarApp(){
+  var p = $('bloqueoPin').value.trim(); if(!p) return;
+  $('bloqueoMsg').textContent = 'Revisando…';
+  rfRpc('asadero_get', {p_pin:p, p_clave:'asadero_insumos_v1'}).then(function(r){
+    if(r && r.error==='bloqueado'){ $('bloqueoMsg').textContent = 'Demasiados intentos. Espera 10 minutos.'; return; }
+    if(r && r.error){ $('bloqueoMsg').textContent = 'PIN incorrecto'; $('bloqueoPin').value=''; return; }
+    try { localStorage.setItem('asadero_pin_nube', p); } catch(e){}
+    location.reload();
+  }).catch(function(){ $('bloqueoMsg').textContent = 'Sin internet: no se pudo revisar el PIN'; });
+}
+function actualizarApp(){ toast('Actualizando…'); setTimeout(function(){ location.reload(); }, 700); }
+if(window.AS_NUBE){
+  $('barraSesion').classList.remove('oculto');
+  if(!rfPin()) mostrarBloqueo('');
+  $('bloqueoPin').addEventListener('keydown', function(e){ if(e.key==='Enter') entrarApp(); });
+  // Si el PIN deja de servir (lo cambiaron), se vuelve a pedir.
+  setInterval(function(){ if(!rfPin() && $('bloqueo').classList.contains('oculto')) mostrarBloqueo('Hay que escribir el PIN otra vez'); }, 3000);
+  // Al volver a la app desde otra, se refresca la lista de recibos.
+  document.addEventListener('visibilitychange', function(){ if(!document.hidden) rfRefrescar(true); });
 }
 
 // ---------- Historial ----------
