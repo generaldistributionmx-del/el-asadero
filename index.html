@@ -323,6 +323,8 @@ var LISTAS_MANUEL = {
 var UNIDADES_MANUEL = {'Salsa ranchera La Costeña 7 oz':'lata', 'Queso cotija rallado FUD (12/16 oz)':'lb'};
 LISTAS_MANUEL.Verduras.unidad = 'caja';
 LISTAS_MANUEL.Verduras.nombres.forEach(function(n){ UNIDADES_MANUEL[n] = 'caja'; });
+// Lo que se compra por pieza (6-nov: Manuel pidió pasarlos de caja a pieza).
+['Piña','Melón','Sandía','Lechuga','Aguacate','Pepino'].forEach(function(n){ UNIDADES_MANUEL[n] = 'pieza'; });
 // Sugeridos del primer borrador (ya reemplazados por las listas de Manuel; se quedan apagados). Existencia en 0: no se inventan cantidades.
 var SUGERIDOS = [].concat.apply([], Object.keys(LISTAS_MANUEL).map(function(c){
   return LISTAS_MANUEL[c].nombres.map(function(n){ return [n, UNIDADES_MANUEL[n] || LISTAS_MANUEL[c].unidad, c]; });
