@@ -231,6 +231,13 @@
   </section>
 </main>
 
+<!-- Recibos de un lugar (con su foto) -->
+<dialog id="dlgLugar">
+  <h2 id="lugarTit">Recibos</h2>
+  <div id="lugarLista"></div>
+  <button class="btn sec" onclick="dlgLugar.close()">Cerrar</button>
+</dialog>
+
 <!-- Dialogo insumo -->
 <dialog id="dlgInsumo">
   <h2 id="dlgInsumoTit">Insumo</h2>
@@ -848,7 +855,8 @@ function pintarRecibos(){
     var tks=ordenar(porTarj), maxT=tks.length?porTarj[tks[0]]:0;
     if(tks.length) h+='<div class="card"><div class="grupo">Por tarjeta</div>'+tks.map(function(t){ return filaBarra(nombreTarjeta(t),porTarj[t],maxT); }).join('')+'</div>';
     var pvs=ordenar(porProv), maxP=pvs.length?porProv[pvs[0]]:0;
-    if(pvs.length) h+='<div class="card"><div class="grupo">Por lugar</div>'+pvs.map(function(n){ return filaBarra(n,porProv[n],maxP); }).join('')+'</div>';
+    window.__lugares = pvs;
+    if(pvs.length) h+='<div class="card"><div class="grupo">Por lugar</div><div class="sub" style="margin-bottom:6px">Toca un lugar para ver todos sus recibos'+(window.AS_NUBE?' y sus fotos':'')+'.</div>'+pvs.map(function(n,k){ return '<div style="cursor:pointer" onclick="verLugar('+k+')">'+filaBarra(n,porProv[n],maxP)+'</div>'; }).join('')+'</div>';
     var gs=ordenar(porGasto), maxG=gs.length?porGasto[gs[0]]:0;
     if(gs.length) h+='<div class="card"><div class="grupo">Otros gastos</div>'+gs.map(function(g){ return filaBarra(g,porGasto[g],maxG); }).join('')+'</div>';
     var rl=Object.keys(recs).sort(function(a,b){ return recs[b].fecha<recs[a].fecha?-1:1; }).slice(0,10);
@@ -864,6 +872,38 @@ function pintarRecibos(){
   }
   $('rcResumen').innerHTML=h;
   if(window.rfRefrescar) rfRefrescar(false);
+}
+
+// ---------- Recibos de un lugar, con su foto ----------
+// Cada compra guarda en "foto" el id de la foto del recibo (la que se subió); la imagen se baja de la nube con el PIN.
+function verLugar(k){
+  var nombre = (window.__lugares||[])[k]; if(nombre==null) return;
+  var porRec = {};
+  DB.movs.forEach(function(m){
+    if(m.tipo!=='compra' || (m.proveedor||'Sin proveedor')!==nombre) return;
+    var clave = m.recibo || ('s'+m.id);
+    var r = porRec[clave] || (porRec[clave] = {fecha:m.fecha, tarj:m.tarjeta||'', nota:m.nota||'', foto:'', total:0, lineas:[]});
+    r.total += m.costo||0; r.lineas.push(m); if(m.foto) r.foto = m.foto;
+  });
+  var lista = Object.keys(porRec).map(function(c){ return porRec[c]; }).sort(function(a,b){ return a.fecha<b.fecha?1:-1; });
+  var tot = lista.reduce(function(a,r){ return a+r.total; },0);
+  $('lugarTit').textContent = nombre+' · '+dinero(tot);
+  $('lugarLista').innerHTML = lista.map(function(r,i){
+    var f = new Date(r.fecha).toLocaleDateString('es-MX',{day:'numeric',month:'short',year:'numeric'});
+    var foto = r.foto ? (window.AS_NUBE ? '<button class="btn sec mini" onclick="verFoto(\''+r.foto+'\','+i+')">📷 Ver recibo</button><div id="foto'+i+'"></div>' : '<div class="sub">La foto sólo se ve en la versión de internet.</div>')
+                      : '<div class="sub">Sin foto del recibo</div>';
+    return '<div class="card"><div class="fila"><b>'+f+'</b><b>'+dinero(r.total)+'</b></div>'+
+      '<div class="sub">'+esc(r.tarj ? nombreTarjeta(r.tarj) : 'Sin tarjeta anotada')+'</div>'+
+      '<ul style="margin:6px 0">'+r.lineas.map(function(m){ return '<li>'+esc(m.nombre)+' — '+fmt(m.cant)+' '+esc(m.unidad)+' · '+dinero(m.costo)+'</li>'; }).join('')+'</ul>'+foto+'</div>';
+  }).join('') || '<div class="vacio">Este lugar no tiene recibos de compra.</div>';
+  $('dlgLugar').showModal();
+}
+function verFoto(id, i){
+  var c = $('foto'+i); if(c.innerHTML){ c.innerHTML=''; return; }
+  c.innerHTML = '<div class="sub" style="margin-top:6px">Cargando…</div>';
+  rfRpc('asadero_recibo_ver', {p_pin:rfPin(), p_id:id}).then(function(r){
+    c.innerHTML = r && r.imagen ? '<img alt="Recibo" style="width:100%;margin-top:8px;border-radius:8px;background:#fff" src="data:image/jpeg;base64,'+r.imagen+'">' : '<div class="sub">No se pudo cargar la foto</div>';
+  }).catch(function(){ c.innerHTML = '<div class="sub">Sin internet: no se pudo cargar la foto</div>'; });
 }
 
 // ---------- Fotos de recibos (sólo en la versión de internet) ----------
