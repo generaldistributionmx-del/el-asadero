@@ -82,6 +82,7 @@
   <button data-tab="conteo">Conteo</button>
   <button data-tab="platillos">Platillos</button>
   <button data-tab="recetas">Recetas</button>
+  <button data-tab="recibos">Recibos</button>
   <button data-tab="historial">Historial</button>
 </nav>
 
@@ -156,6 +157,47 @@
     <h2>Recetas</h2>
     <div class="aviso">Las recetas de la cocina, como las dicta José: ingredientes de una tanda y cómo se hace.</div>
     <div id="listaPreps"></div>
+  </section>
+
+  <!-- RECIBOS: gastos de insumos y otros gastos, con totales por periodo -->
+  <section id="recibos" class="oculto">
+    <h2>Recibos y gastos</h2>
+    <div class="aviso">Aquí se captura cada recibo de compra y se ve cuánto se gasta en cada insumo y categoría. Todo se suma solo.</div>
+    <div class="card">
+      <label>Ver gastos de</label>
+      <select id="rcPer"><option value="hoy">Hoy</option><option value="semana">Últimos 7 días</option><option value="mes" selected>Este mes</option><option value="todo">Todo</option></select>
+    </div>
+    <div id="rcResumen"></div>
+
+    <h2 style="margin-top:18px">Nuevo recibo</h2>
+    <div class="card">
+      <div class="dos">
+        <div><label>Proveedor</label><input id="rcProv" list="provs" placeholder="Ej. Restaurant Depot"></div>
+        <div><label>Fecha</label><input id="rcFecha" type="date"></div>
+      </div>
+      <label>Insumo</label>
+      <select id="rcInsumo"></select>
+      <div class="dos">
+        <div><label>Cantidad (<span id="rcUnidad">-</span>)</label><input id="rcCant" type="number" inputmode="decimal" step="any"></div>
+        <div><label>Costo total $</label><input id="rcCosto" type="number" inputmode="decimal" step="any"></div>
+      </div>
+      <button class="btn sec" onclick="rcAgregar()">+ Agregar al recibo</button>
+      <div id="rcLineas" style="margin-top:10px"></div>
+      <label>Nota (opcional)</label>
+      <input id="rcNota" placeholder="Número de factura, quién compró…">
+      <button class="btn" onclick="rcGuardar()">Guardar recibo</button>
+    </div>
+
+    <h2 style="margin-top:18px">Otro gasto</h2>
+    <div class="aviso">Para lo que no es insumo: renta, luz, gas, nómina, reparaciones…</div>
+    <div class="card">
+      <div class="dos">
+        <div><label>Concepto</label><input id="gConcepto" list="conceptos" placeholder="Ej. Luz"></div>
+        <div><label>Monto $</label><input id="gMonto" type="number" inputmode="decimal" step="any"></div>
+      </div>
+      <datalist id="conceptos"><option value="Renta"><option value="Luz"><option value="Gas"><option value="Agua"><option value="Nómina"><option value="Reparaciones"><option value="Limpieza"><option value="Otro"></datalist>
+      <button class="btn" onclick="gGuardar()">Guardar gasto</button>
+    </div>
   </section>
 
   <!-- HISTORIAL -->
@@ -587,12 +629,92 @@ function agregarARecta(){
   guardar(); $('rCant').value=''; pintarReceta(); pintarPlatillos();
 }
 
+// ---------- Recibos y gastos ----------
+var rcLineas = [];
+function hoyISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function rcAct(){ var i=insumo($('rcInsumo').value); $('rcUnidad').textContent = i?i.unidad:'-'; }
+$('rcInsumo').addEventListener('input',rcAct);
+$('rcPer').addEventListener('input',pintarRecibos);
+function rcAgregar(){
+  var i=insumo($('rcInsumo').value), c=parseFloat($('rcCant').value), t=parseFloat($('rcCosto').value);
+  if(!i || !(c>0)){ toast('Falta la cantidad'); return; }
+  if(!(t>=0) || $('rcCosto').value===''){ toast('Falta el costo'); return; }
+  rcLineas.push({insumoId:i.id,cant:c,costo:t});
+  $('rcCant').value=''; $('rcCosto').value=''; pintarRcLineas();
+}
+function rcQuitar(k){ rcLineas.splice(k,1); pintarRcLineas(); }
+function pintarRcLineas(){
+  var tot=0;
+  var h = rcLineas.map(function(l,k){ var i=insumo(l.insumoId); tot+=l.costo;
+    return '<div class="fila" style="padding:4px 0;border-bottom:1px dashed var(--borde)"><div>'+esc(i.nombre)+' <span class="sub">'+fmt(l.cant)+' '+esc(i.unidad)+'</span></div><div><b>'+dinero(l.costo)+'</b> <button class="btn sec mini" onclick="rcQuitar('+k+')">✕</button></div></div>'; }).join('');
+  $('rcLineas').innerHTML = rcLineas.length ? h+'<div class="fila" style="padding-top:6px"><b>Total del recibo</b><b>'+dinero(tot)+'</b></div>' : '<div class="sub">Todavía no hay renglones en este recibo.</div>';
+}
+function rcGuardar(){
+  if(!rcLineas.length){ toast('Agrega al menos un insumo'); return; }
+  var fecha = $('rcFecha').value ? new Date($('rcFecha').value+'T12:00:00').toISOString() : new Date().toISOString();
+  var rid = nuevoId(), prov = $('rcProv').value.trim(), nota = $('rcNota').value.trim(), tot=0;
+  rcLineas.forEach(function(l){
+    var i=insumo(l.insumoId); tot+=l.costo;
+    DB.movs.push({id:nuevoId(),fecha:fecha,tipo:'compra',insumoId:i.id,nombre:i.nombre,unidad:i.unidad,cant:l.cant,costo:l.costo,proveedor:prov,nota:nota,recibo:rid});
+    i.stock += l.cant;
+    if(i.ocupo>0) i.ocupo = Math.max(0, i.ocupo - l.cant);
+  });
+  guardar(); rcLineas=[]; $('rcNota').value=''; pintarRcLineas(); pintar();
+  toast('Recibo guardado: '+dinero(tot));
+}
+function gGuardar(){
+  var c=$('gConcepto').value.trim(), m=parseFloat($('gMonto').value);
+  if(!c){ toast('Falta el concepto'); return; }
+  if(!(m>0)){ toast('Falta el monto'); return; }
+  DB.movs.push({id:nuevoId(),fecha:new Date().toISOString(),tipo:'gasto',nombre:c,costo:m});
+  guardar(); $('gConcepto').value=''; $('gMonto').value=''; pintar(); toast('Gasto guardado: '+dinero(m));
+}
+function movsDelPeriodo(){
+  var per=$('rcPer').value, ahora=new Date(), desde=0;
+  if(per==='hoy') desde=new Date(ahora.getFullYear(),ahora.getMonth(),ahora.getDate()).getTime();
+  else if(per==='semana') desde=ahora.getTime()-7*86400000;
+  else if(per==='mes') desde=new Date(ahora.getFullYear(),ahora.getMonth(),1).getTime();
+  return DB.movs.filter(function(m){ return (m.tipo==='compra'||m.tipo==='gasto') && new Date(m.fecha).getTime()>=desde; });
+}
+function filaBarra(nombre, monto, max, extra){
+  return '<div style="margin:6px 0"><div class="fila"><div>'+esc(nombre)+(extra?' <span class="sub">'+extra+'</span>':'')+'</div><b>'+dinero(monto)+'</b></div>'+
+    '<div style="height:6px;border-radius:3px;background:var(--carbon)"><div style="height:6px;border-radius:3px;background:var(--rojo);width:'+(max>0?Math.max(2,monto/max*100):0)+'%"></div></div></div>';
+}
+function pintarRecibos(){
+  var ms=movsDelPeriodo(), total=0, ins=0, otros=0, porCat={}, porIns={}, porGasto={}, recs={};
+  ms.forEach(function(m){
+    total += m.costo||0;
+    if(m.tipo==='gasto'){ otros+=m.costo; porGasto[m.nombre]=(porGasto[m.nombre]||0)+m.costo; return; }
+    ins += m.costo||0;
+    var i=insumo(m.insumoId), cat=i?i.cat:'Otros';
+    porCat[cat]=(porCat[cat]||0)+m.costo;
+    var o=porIns[m.nombre]||(porIns[m.nombre]={costo:0,cant:0,unidad:m.unidad}); o.costo+=m.costo; o.cant+=m.cant;
+    if(m.recibo){ var r=recs[m.recibo]||(recs[m.recibo]={fecha:m.fecha,prov:m.proveedor,total:0,n:0}); r.total+=m.costo; r.n++; }
+  });
+  function ordenar(o){ return Object.keys(o).sort(function(a,b){ var x=typeof o[a]==='number'?o[a]:o[a].costo, y=typeof o[b]==='number'?o[b]:o[b].costo; return y-x; }); }
+  var h='<div class="card"><div class="sub">Total gastado</div><div class="num" style="font-size:30px">'+dinero(total)+'</div>'+
+    '<span class="chip">Insumos '+dinero(ins)+'</span><span class="chip">Otros gastos '+dinero(otros)+'</span></div>';
+  if(!ms.length) h+='<div class="vacio">No hay gastos en este periodo.</div>';
+  else {
+    var cats=ordenar(porCat), maxC=cats.length?porCat[cats[0]]:0;
+    if(cats.length) h+='<div class="card"><div class="grupo">Por categoría</div>'+cats.map(function(c){ return filaBarra(c,porCat[c],maxC); }).join('')+'</div>';
+    var nom=ordenar(porIns), maxI=nom.length?porIns[nom[0]].costo:0;
+    if(nom.length) h+='<div class="card"><div class="grupo">Por insumo</div>'+nom.map(function(n){ var o=porIns[n]; return filaBarra(n,o.costo,maxI,fmt(o.cant)+' '+esc(o.unidad)); }).join('')+'</div>';
+    var gs=ordenar(porGasto), maxG=gs.length?porGasto[gs[0]]:0;
+    if(gs.length) h+='<div class="card"><div class="grupo">Otros gastos</div>'+gs.map(function(g){ return filaBarra(g,porGasto[g],maxG); }).join('')+'</div>';
+    var rl=Object.keys(recs).sort(function(a,b){ return recs[b].fecha<recs[a].fecha?-1:1; }).slice(0,10);
+    if(rl.length) h+='<div class="card"><div class="grupo">Recibos recientes</div>'+rl.map(function(k){ var r=recs[k], f=new Date(r.fecha).toLocaleDateString('es-MX',{day:'numeric',month:'short'});
+      return '<div class="fila" style="padding:4px 0"><div>'+f+' · '+esc(r.prov||'Sin proveedor')+' <span class="sub">'+r.n+(r.n>1?' renglones':' renglón')+'</span></div><b>'+dinero(r.total)+'</b></div>'; }).join('')+'</div>';
+  }
+  $('rcResumen').innerHTML=h;
+}
+
 // ---------- Historial ----------
 function pintarHist(){
-  var tipos={compra:'Compra',conteo:'Conteo',merma:'Merma'};
+  var tipos={compra:'Compra',conteo:'Conteo',merma:'Merma',gasto:'Gasto'};
   $('listaHist').innerHTML = DB.movs.slice().reverse().map(function(m){
     var f=new Date(m.fecha), cuando=f.toLocaleDateString('es-MX',{day:'numeric',month:'short'})+' '+f.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
-    var linea = m.tipo==='compra' ? '+'+fmt(m.cant)+' '+m.unidad+' · '+dinero(m.costo)+(m.proveedor?' · '+esc(m.proveedor):'')
+    var linea = m.tipo==='gasto' ? dinero(m.costo) : m.tipo==='compra' ? '+'+fmt(m.cant)+' '+m.unidad+' · '+dinero(m.costo)+(m.proveedor?' · '+esc(m.proveedor):'')
       : m.tipo==='conteo' ? 'Había '+fmt(m.antes)+', se contó '+fmt(m.despues)+' '+m.unidad : '-'+fmt(m.cant)+' '+m.unidad;
     return '<div class="card"><div class="fila"><div class="nombre">'+esc(m.nombre)+'</div><span class="chip'+(m.tipo==='merma'?' alerta':'')+'">'+tipos[m.tipo]+'</span></div>'+
       '<div class="sub">'+cuando+' · '+linea+(m.nota?' · '+esc(m.nota):'')+'</div></div>';
@@ -600,13 +722,14 @@ function pintarHist(){
 }
 
 function pintar(){
-  pintarInsumos(); llenarSelect($('cInsumo')); llenarSelect($('kInsumo')); actCompra(); actConteo(); pintarPlatillos(); pintarPreps(); pintarHist();
+  pintarInsumos(); llenarSelect($('cInsumo')); llenarSelect($('kInsumo')); actCompra(); actConteo(); pintarPlatillos(); pintarPreps(); pintarHist(); llenarSelect($('rcInsumo')); rcAct(); pintarRecibos(); pintarRcLineas();
   var provs={}; DB.movs.forEach(function(m){ if(m.proveedor) provs[m.proveedor]=1; });
   $('provs').innerHTML = Object.keys(provs).map(function(p){ return '<option value="'+esc(p)+'">'; }).join('');
 }
 $('buscarInsumo').addEventListener('input',pintarInsumos);
 // Cuando otro aparato cambia los insumos (por la central), se vuelve a leer y pintar.
 window.addEventListener('storage', function(e){ if(e.key===KEY){ cargar(); pintar(); } });
+$('rcFecha').value = hoyISO();
 cargar(); pintar();
 </script>
 </body>
