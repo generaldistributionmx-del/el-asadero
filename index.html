@@ -163,6 +163,27 @@
   <section id="recibos" class="oculto">
     <h2>Recibos y gastos</h2>
     <div class="aviso">Aquí se captura cada recibo de compra y se ve cuánto se gasta en cada insumo y categoría. Todo se suma solo.</div>
+    <div class="card oculto" id="rcFoto">
+      <div class="nombre">📷 Subir recibo</div>
+      <div class="aviso" style="margin:8px 0">Toma la foto del ticket completo, derecho y con buena luz. Se sube en el momento y se captura solo.</div>
+      <label>¿Quién lo sube?</label>
+      <input id="rfQuien" placeholder="Tu nombre">
+      <input type="file" id="rfCamara" accept="image/*" capture="environment" style="display:none">
+      <input type="file" id="rfGaleria" accept="image/*" style="display:none">
+      <button class="btn" onclick="$('rfCamara').click()">📷 Tomar foto del recibo</button>
+      <button class="btn sec" onclick="$('rfGaleria').click()">Elegir de la galería</button>
+      <div id="rfPrevia" class="oculto" style="margin-top:10px">
+        <img id="rfImg" alt="Recibo" style="width:100%;max-height:340px;object-fit:contain;border:1px solid var(--borde);border-radius:8px;background:#fff">
+        <div class="sub" id="rfInfo" style="margin:6px 0"></div>
+        <label>Nota (opcional)</label>
+        <input id="rfNota" placeholder="Ej. Costco, compra de hoy…">
+        <div class="dos">
+          <button class="btn" id="rfEnviar" onclick="rfEnviar()" style="margin:0">Enviar recibo</button>
+          <button class="btn sec" onclick="rfCancelar()" style="margin:0">Repetir</button>
+        </div>
+      </div>
+      <div id="rfLista" style="margin-top:12px"></div>
+    </div>
     <div class="card">
       <label>Ver gastos de</label>
       <select id="rcPer"><option value="hoy">Hoy</option><option value="semana">Últimos 7 días</option><option value="mes" selected>Este mes</option><option value="todo">Todo</option></select>
@@ -699,21 +720,45 @@ function movsDelPeriodo(){
   if(per==='hoy') desde=new Date(ahora.getFullYear(),ahora.getMonth(),ahora.getDate()).getTime();
   else if(per==='semana') desde=ahora.getTime()-7*86400000;
   else if(per==='mes') desde=new Date(ahora.getFullYear(),ahora.getMonth(),1).getTime();
+  if(per.indexOf('m:')===0) return DB.movs.filter(function(m){ return (m.tipo==='compra'||m.tipo==='gasto') && claveMes(m.fecha)===per.slice(2); });
   return DB.movs.filter(function(m){ return (m.tipo==='compra'||m.tipo==='gasto') && new Date(m.fecha).getTime()>=desde; });
+}
+var MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function claveMes(iso){ var d=new Date(iso); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function nombreMes(k){ var a=k.split('-'); return MESES[+a[1]-1].charAt(0).toUpperCase()+MESES[+a[1]-1].slice(1)+' '+a[0]; }
+// Cierre de cada mes: total gastado, en insumos y en otros gastos.
+function cierresMes(){
+  var por = {};
+  DB.movs.forEach(function(m){
+    if(m.tipo!=='compra' && m.tipo!=='gasto') return;
+    var k = claveMes(m.fecha), o = por[k] || (por[k] = {ins:0, otros:0, n:0});
+    if(m.tipo==='gasto') o.otros += m.costo||0; else { o.ins += m.costo||0; o.n++; }
+  });
+  return por;
+}
+// El selector de periodo ofrece también cada mes que ya tiene compras.
+function llenarPeriodos(){
+  var sel = $('rcPer'), v = sel.value, ms = Object.keys(cierresMes()).sort().reverse();
+  var base = [['hoy','Hoy'],['semana','Últimos 7 días'],['mes','Este mes'],['todo','Todo']];
+  sel.innerHTML = base.map(function(o){ return '<option value="'+o[0]+'">'+o[1]+'</option>'; }).join('') +
+    ms.map(function(k){ return '<option value="m:'+k+'">'+nombreMes(k)+'</option>'; }).join('');
+  sel.value = v || 'mes'; if(sel.value !== (v || 'mes')) sel.value = 'mes';
 }
 function filaBarra(nombre, monto, max, extra){
   return '<div style="margin:6px 0"><div class="fila"><div>'+esc(nombre)+(extra?' <span class="sub">'+extra+'</span>':'')+'</div><b>'+dinero(monto)+'</b></div>'+
     '<div style="height:6px;border-radius:3px;background:var(--carbon)"><div style="height:6px;border-radius:3px;background:var(--rojo);width:'+(max>0?Math.max(2,monto/max*100):0)+'%"></div></div></div>';
 }
 function pintarRecibos(){
-  var ms=movsDelPeriodo(), total=0, ins=0, otros=0, porCat={}, porIns={}, porGasto={}, recs={};
+  llenarPeriodos();
+  var ms=movsDelPeriodo(), total=0, ins=0, otros=0, porCat={}, porIns={}, porGasto={}, recs={}, porProv={};
   ms.forEach(function(m){
     total += m.costo||0;
     if(m.tipo==='gasto'){ otros+=m.costo; porGasto[m.nombre]=(porGasto[m.nombre]||0)+m.costo; return; }
     ins += m.costo||0;
     var i=insumo(m.insumoId), cat=i?i.cat:'Otros';
     porCat[cat]=(porCat[cat]||0)+m.costo;
-    var o=porIns[m.nombre]||(porIns[m.nombre]={costo:0,cant:0,unidad:m.unidad}); o.costo+=m.costo; o.cant+=m.cant;
+    var o=porIns[m.nombre]||(porIns[m.nombre]={costo:0,cant:0,unidad:m.unidad,veces:0}); o.costo+=m.costo; o.cant+=m.cant; o.veces++;
+    var pv=m.proveedor||'Sin proveedor'; porProv[pv]=(porProv[pv]||0)+m.costo;
     if(m.recibo){ var r=recs[m.recibo]||(recs[m.recibo]={fecha:m.fecha,prov:m.proveedor,total:0,n:0}); r.total+=m.costo; r.n++; }
   });
   function ordenar(o){ return Object.keys(o).sort(function(a,b){ var x=typeof o[a]==='number'?o[a]:o[a].costo, y=typeof o[b]==='number'?o[b]:o[b].costo; return y-x; }); }
@@ -724,14 +769,85 @@ function pintarRecibos(){
     var cats=ordenar(porCat), maxC=cats.length?porCat[cats[0]]:0;
     if(cats.length) h+='<div class="card"><div class="grupo">Por categoría</div>'+cats.map(function(c){ return filaBarra(c,porCat[c],maxC); }).join('')+'</div>';
     var nom=ordenar(porIns), maxI=nom.length?porIns[nom[0]].costo:0;
-    if(nom.length) h+='<div class="card"><div class="grupo">Por insumo</div>'+nom.map(function(n){ var o=porIns[n]; return filaBarra(n,o.costo,maxI,fmt(o.cant)+' '+esc(o.unidad)); }).join('')+'</div>';
+    if(nom.length) h+='<div class="card"><div class="grupo">Por insumo</div>'+nom.map(function(n){ var o=porIns[n]; return filaBarra(n,o.costo,maxI,fmt(o.cant)+' '+esc(o.unidad)+' · '+o.veces+(o.veces>1?' compras':' compra')); }).join('')+'</div>';
+    var pvs=ordenar(porProv), maxP=pvs.length?porProv[pvs[0]]:0;
+    if(pvs.length) h+='<div class="card"><div class="grupo">Por lugar</div>'+pvs.map(function(n){ return filaBarra(n,porProv[n],maxP); }).join('')+'</div>';
     var gs=ordenar(porGasto), maxG=gs.length?porGasto[gs[0]]:0;
     if(gs.length) h+='<div class="card"><div class="grupo">Otros gastos</div>'+gs.map(function(g){ return filaBarra(g,porGasto[g],maxG); }).join('')+'</div>';
     var rl=Object.keys(recs).sort(function(a,b){ return recs[b].fecha<recs[a].fecha?-1:1; }).slice(0,10);
     if(rl.length) h+='<div class="card"><div class="grupo">Recibos recientes</div>'+rl.map(function(k){ var r=recs[k], f=new Date(r.fecha).toLocaleDateString('es-MX',{day:'numeric',month:'short'});
       return '<div class="fila" style="padding:4px 0"><div>'+f+' · '+esc(r.prov||'Sin proveedor')+' <span class="sub">'+r.n+(r.n>1?' renglones':' renglón')+'</span></div><b>'+dinero(r.total)+'</b></div>'; }).join('')+'</div>';
   }
+  var cm = cierresMes(), ks = Object.keys(cm).sort().reverse();
+  if(ks.length){
+    h += '<div class="card"><div class="grupo">Cierre de cada mes</div>' + ks.map(function(k){
+      var o = cm[k], t = o.ins + o.otros;
+      return '<div class="fila" style="padding:6px 0;border-bottom:1px dashed var(--borde);cursor:pointer" onclick="$(\'rcPer\').value=\'m:'+k+'\';pintarRecibos()"><div><b>'+nombreMes(k)+'</b><div class="sub">Insumos '+dinero(o.ins)+' · Otros '+dinero(o.otros)+'</div></div><b>'+dinero(t)+'</b></div>';
+    }).join('') + '<div class="sub" style="margin-top:6px">Toca un mes para ver su detalle. Cada recibo nuevo se suma solo.</div></div>';
+  }
   $('rcResumen').innerHTML=h;
+  if(window.rfRefrescar) rfRefrescar(false);
+}
+
+// ---------- Fotos de recibos (sólo en la versión de internet) ----------
+var rfImagen = null, rfUltimo = 0;
+function rfPin(){ try { return localStorage.getItem('asadero_pin_nube') || ''; } catch(e){ return ''; } }
+function rfRpc(nombre, cuerpo){
+  return fetch(window.AS_NUBE.url + '/rest/v1/rpc/' + nombre, {method:'POST',
+    headers:{'apikey':window.AS_NUBE.key,'Authorization':'Bearer '+window.AS_NUBE.key,'Content-Type':'application/json'},
+    body:JSON.stringify(cuerpo)}).then(function(r){ if(!r.ok) throw 0; return r.json(); });
+}
+function rfPrepararFoto(archivo){
+  if(!archivo) return;
+  var lector = new FileReader();
+  lector.onload = function(){
+    var im = new Image();
+    im.onload = function(){
+      var max = 1800, k = Math.min(1, max/Math.max(im.width, im.height));
+      var c = document.createElement('canvas'); c.width = Math.round(im.width*k); c.height = Math.round(im.height*k);
+      c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+      var url = c.toDataURL('image/jpeg', 0.72);
+      rfImagen = url.split(',')[1];
+      $('rfImg').src = url; $('rfInfo').textContent = 'Foto lista (' + Math.round(rfImagen.length*0.75/1024) + ' KB). Revisa que se lean bien los precios.';
+      $('rfPrevia').classList.remove('oculto'); $('rfEnviar').disabled = false;
+    };
+    im.onerror = function(){ toast('No pude leer esa foto'); };
+    im.src = lector.result;
+  };
+  lector.readAsDataURL(archivo);
+}
+function rfCancelar(){ rfImagen = null; $('rfPrevia').classList.add('oculto'); $('rfCamara').value = ''; $('rfGaleria').value = ''; $('rfNota').value = ''; }
+function rfEnviar(){
+  if(!rfImagen) return;
+  var quien = $('rfQuien').value.trim();
+  if(!quien){ toast('Pon tu nombre'); $('rfQuien').focus(); return; }
+  try { localStorage.setItem('asadero_quien', quien); } catch(e){}
+  $('rfEnviar').disabled = true; $('rfEnviar').textContent = 'Enviando…';
+  rfRpc('asadero_recibo_subir', {p_pin:rfPin(), p_quien:quien, p_nota:$('rfNota').value.trim(), p_imagen:rfImagen}).then(function(r){
+    $('rfEnviar').textContent = 'Enviar recibo';
+    if(r && r.ok){ toast('Recibo enviado ✓'); rfCancelar(); rfRefrescar(true); }
+    else { $('rfEnviar').disabled = false; toast(r && r.error==='pin' ? 'PIN incorrecto: recarga la página' : 'No se pudo enviar, intenta otra vez'); }
+  }).catch(function(){ $('rfEnviar').textContent = 'Enviar recibo'; $('rfEnviar').disabled = false; toast('Sin internet: no se envió'); });
+}
+function rfRefrescar(ya){
+  if(!window.AS_NUBE || $('recibos').classList.contains('oculto')) return;
+  if(!ya && Date.now() - rfUltimo < 10000) return;
+  rfUltimo = Date.now();
+  rfRpc('asadero_recibos_lista', {p_pin:rfPin()}).then(function(r){
+    if(!r || !r.lista) return;
+    $('rfLista').innerHTML = r.lista.length ? '<div class="grupo">Recibos subidos</div>' + r.lista.slice(0,8).map(function(x){
+      var f = new Date(x.creado).toLocaleDateString('es-MX',{day:'numeric',month:'short'}) + ' ' + new Date(x.creado).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+      var ok = x.estado === 'capturado';
+      return '<div class="fila" style="padding:4px 0;border-bottom:1px dashed var(--borde)"><div>' + f + ' · ' + esc(x.quien||'') + (x.resultado ? '<div class="sub">' + esc(x.resultado) + '</div>' : '') + '</div><span class="chip' + (ok?' on':'') + '">' + (ok ? 'Capturado ✓' : 'Pendiente') + '</span></div>';
+    }).join('') : '';
+  }).catch(function(){});
+}
+if(window.AS_NUBE){
+  $('rcFoto').classList.remove('oculto');
+  try { $('rfQuien').value = localStorage.getItem('asadero_quien') || ''; } catch(e){}
+  $('rfCamara').addEventListener('change', function(){ rfPrepararFoto(this.files[0]); });
+  $('rfGaleria').addEventListener('change', function(){ rfPrepararFoto(this.files[0]); });
+  setInterval(function(){ rfRefrescar(false); }, 15000);
 }
 
 // ---------- Historial ----------
