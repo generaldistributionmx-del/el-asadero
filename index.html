@@ -256,6 +256,20 @@
   <button class="btn sec" onclick="dlgLugar.close()">Cerrar</button>
 </dialog>
 
+<!-- Marcar una factura como pagada -->
+<dialog id="dlgPagar">
+  <h2 id="pgTit">Pagar</h2>
+  <div class="sub" style="margin-bottom:8px">Al guardar, la factura pasa de rojo (por pagar) a verde (pagada).</div>
+  <label>Forma de pago</label>
+  <select id="pgMetodo"><option>Cheque del asadero</option><option>Transferencia del asadero</option><option>Efectivo</option><option>Tarjeta</option></select>
+  <label>Fecha del pago</label>
+  <input id="pgFecha" type="date">
+  <label>Nota (opcional)</label>
+  <input id="pgNota" placeholder="Ej. número de cheque">
+  <button class="btn" onclick="pagarGuardar()">Marcar como pagada</button>
+  <button class="btn sec" onclick="dlgPagar.close()">Cancelar</button>
+</dialog>
+
 <!-- Dialogo insumo -->
 <dialog id="dlgInsumo">
   <h2 id="dlgInsumoTit">Insumo</h2>
@@ -809,6 +823,32 @@ function reemGuardar(){
   guardar(); $('rbMonto').value=''; $('rbNota').value=''; pintar(); toast('Reembolso guardado: '+dinero(m));
 }
 
+// Facturas por pagar (ej. a General Distribution): las compras de ese recibo llevan porPagar:true. El gasto ya cuenta desde
+// que llega la mercancía; esto sólo avisa que falta pagarlo. Rojo = por pagar, verde = pagada.
+var pagarRecibo = null;
+function chipDeuda(lineas){
+  var rojo='background:#c0392b;color:#fff', verde='background:#1f7a3a;color:#fff';
+  if(lineas.some(function(m){ return m.porPagar; })) return '<span class="chip" style="'+rojo+'">● Por pagar</span>';
+  var p = lineas.find(function(m){ return m.pagadoFecha; });
+  if(!p) return '';
+  var f = new Date(p.pagadoFecha).toLocaleDateString('es-MX',{day:'numeric',month:'short'});
+  return '<span class="chip" style="'+verde+'">● Pagada '+f+(p.pagadoMetodo?' · '+esc(p.pagadoMetodo):'')+'</span>';
+}
+function pagarAbrir(rid){
+  var ms = DB.movs.filter(function(m){ return m.recibo===rid; }); if(!ms.length) return;
+  pagarRecibo = rid;
+  $('pgTit').textContent = (ms[0].proveedor||'Factura')+' · '+dinero(ms.reduce(function(a,m){ return a+(m.costo||0); },0));
+  $('pgFecha').value = hoyISO(); $('pgNota').value = '';
+  if($('dlgLugar').open) $('dlgLugar').close();
+  $('dlgPagar').showModal();
+}
+function pagarGuardar(){
+  if(!pagarRecibo) return;
+  var f = $('pgFecha').value ? new Date($('pgFecha').value+'T12:00:00').toISOString() : new Date().toISOString();
+  DB.movs.forEach(function(m){ if(m.recibo===pagarRecibo){ m.porPagar=false; m.pagadoFecha=f; m.pagadoMetodo=$('pgMetodo').value; m.pagadoNota=$('pgNota').value.trim(); } });
+  guardar(); $('dlgPagar').close(); pagarRecibo=null; pintar(); toast('Factura marcada como pagada');
+}
+
 // Empleados: cada pago a un empleado es un gasto de categoría "Empleados" (se suma a los gastos, aparte de los insumos).
 function nomGuardar(){
   var n=$('nEmpleado').value.trim(), m=parseFloat($('nMonto').value);
@@ -881,7 +921,7 @@ function pintarRecibos(){
     porCat[cat]=(porCat[cat]||0)+m.costo;
     var o=porIns[m.nombre]||(porIns[m.nombre]={costo:0,cant:0,unidad:m.unidad,veces:0}); o.costo+=m.costo; o.cant+=m.cant; o.veces++;
     var pv=m.proveedor||'Sin proveedor'; porProv[pv]=(porProv[pv]||0)+m.costo;
-    if(m.recibo){ var r=recs[m.recibo]||(recs[m.recibo]={fecha:m.fecha,prov:m.proveedor,tarj:m.tarjeta||'',total:0,n:0}); r.total+=m.costo; r.n++; }
+    if(m.recibo){ var r=recs[m.recibo]||(recs[m.recibo]={fecha:m.fecha,prov:m.proveedor,tarj:m.tarjeta||'',total:0,n:0}); r.total+=m.costo; r.n++; if(m.porPagar) r.pend=true; }
   });
   function ordenar(o){ return Object.keys(o).sort(function(a,b){ var x=typeof o[a]==='number'?o[a]:o[a].costo, y=typeof o[b]==='number'?o[b]:o[b].costo; return y-x; }); }
   var h='<div class="card"><div class="sub">Total gastado</div><div class="num" style="font-size:30px">'+dinero(total)+'</div>'+
@@ -904,7 +944,7 @@ function pintarRecibos(){
     if(gs.length) h+='<div class="card"><div class="grupo">Otros gastos</div>'+gs.map(function(g){ return filaBarra(g,porGasto[g],maxG); }).join('')+'</div>';
     var rl=Object.keys(recs).sort(function(a,b){ return recs[b].fecha<recs[a].fecha?-1:1; }).slice(0,10);
     if(rl.length) h+='<div class="card"><div class="grupo">Recibos recientes</div>'+rl.map(function(k){ var r=recs[k], f=new Date(r.fecha).toLocaleDateString('es-MX',{day:'numeric',month:'short'});
-      return '<div class="fila" style="padding:4px 0"><div>'+f+' · '+esc(r.prov||'Sin proveedor')+' <span class="sub">'+r.n+(r.n>1?' renglones':' renglón')+(r.tarj?' · ••'+r.tarj:'')+'</span> '+chipPago(r.tarj)+'</div><b>'+dinero(r.total)+'</b></div>'; }).join('')+'</div>';
+      return '<div class="fila" style="padding:4px 0"><div>'+f+' · '+esc(r.prov||'Sin proveedor')+' <span class="sub">'+r.n+(r.n>1?' renglones':' renglón')+(r.tarj?' · ••'+r.tarj:'')+'</span> '+(r.pend?'<span class="chip" style="background:#c0392b;color:#fff">● Por pagar</span>':chipPago(r.tarj))+'</div><b>'+dinero(r.total)+'</b></div>'; }).join('')+'</div>';
   }
   // Por reembolsar: tarjetas personales (DB.reembolsar). Siempre cuenta todo el tiempo, no sólo el periodo escogido.
   var reem = tarjetasReem();
@@ -917,6 +957,15 @@ function pintarRecibos(){
     h += '<div class="card"><div class="grupo">Por reembolsar</div><div class="sub" style="margin-bottom:6px">Lo gastado con una tarjeta personal se devuelve con cheque o transferencia del asadero. Devolverlo no es un gasto nuevo.</div>'+
       reem.map(function(t){ var x=reemTotales(t), ok = x.p<=0.004;
         return '<div style="padding:6px 0;border-bottom:1px dashed var(--borde)"><div class="fila"><b>'+esc(nombreTarjeta(t))+'</b><b style="color:'+(ok?'#1f7a3a':'#d9822b')+'">'+(ok?'Todo reembolsado':'Falta '+dinero(x.p))+'</b></div><div class="sub">Gastado '+dinero(x.g)+' · Ya reembolsado '+dinero(x.r)+'</div></div>'; }).join('')+'</div>';
+  }
+  // Por pagar: facturas que llegaron y todavía no se pagan (rojo). Cuenta todo el tiempo.
+  var deb = {}; DB.movs.forEach(function(m){ if(m.recibo && m.porPagar){ var d = deb[m.recibo] || (deb[m.recibo] = {prov:m.proveedor, fecha:m.fecha, total:0}); d.total += m.costo||0; } });
+  var dk = Object.keys(deb).sort(function(a,b){ return deb[a].fecha<deb[b].fecha?-1:1; });
+  if(dk.length){
+    var debTot = dk.reduce(function(a,k){ return a+deb[k].total; },0);
+    h += '<div class="card" style="border:2px solid #c0392b"><div class="grupo" style="color:#c0392b">● Por pagar · '+dinero(debTot)+'</div><div class="sub" style="margin-bottom:6px">Facturas que ya llegaron y todavía no se pagan. Ya cuentan en los gastos; al pagarlas pasan a verde.</div>'+
+      dk.map(function(k){ var d=deb[k], f=new Date(d.fecha).toLocaleDateString('es-MX',{day:'numeric',month:'short'});
+        return '<div style="padding:6px 0;border-bottom:1px dashed var(--borde)"><div class="fila"><b>'+esc(d.prov||'Sin proveedor')+' · '+f+'</b><b style="color:#c0392b">'+dinero(d.total)+'</b></div><button class="btn mini" style="background:#c0392b;margin-top:6px" onclick="pagarAbrir(\''+k+'\')">Marcar como pagada</button></div>'; }).join('')+'</div>';
   }
   var cm = cierresMes(), ks = Object.keys(cm).sort().reverse();
   if(ks.length){
@@ -938,7 +987,7 @@ function verLugar(k){
     if(m.tipo!=='compra' || (m.proveedor||'Sin proveedor')!==nombre) return;
     var clave = m.recibo || ('s'+m.id);
     var r = porRec[clave] || (porRec[clave] = {fecha:m.fecha, tarj:m.tarjeta||'', nota:m.nota||'', foto:'', total:0, lineas:[]});
-    r.total += m.costo||0; r.lineas.push(m); if(m.foto) r.foto = m.foto;
+    r.total += m.costo||0; r.lineas.push(m); if(m.foto) r.foto = m.foto; r.id = m.recibo || '';
   });
   var lista = Object.keys(porRec).map(function(c){ return porRec[c]; }).sort(function(a,b){ return a.fecha<b.fecha?1:-1; });
   var tot = lista.reduce(function(a,r){ return a+r.total; },0);
@@ -948,7 +997,8 @@ function verLugar(k){
     var foto = r.foto ? (window.AS_NUBE ? '<button class="btn sec mini" onclick="verFoto(\''+r.foto+'\','+i+')">📷 Ver recibo</button><div id="foto'+i+'"></div>' : '<div class="sub">La foto sólo se ve en la versión de internet.</div>')
                       : '<div class="sub">Sin foto del recibo</div>';
     return '<div class="card"><div class="fila"><b>'+f+'</b><b>'+dinero(r.total)+'</b></div>'+
-      '<div class="sub">'+esc(r.tarj ? nombreTarjeta(r.tarj) : 'Sin tarjeta anotada')+'</div><div style="margin:4px 0">'+chipPago(r.tarj)+'</div>'+
+      '<div class="sub">'+esc(r.tarj ? nombreTarjeta(r.tarj) : 'Sin tarjeta anotada')+'</div><div style="margin:4px 0">'+chipDeuda(r.lineas)+' '+chipPago(r.tarj)+'</div>'+
+      (r.id && r.lineas.some(function(m){ return m.porPagar; }) ? '<button class="btn mini" style="background:#c0392b;margin-bottom:6px" onclick="pagarAbrir(\''+r.id+'\')">Marcar como pagada</button>' : '')+
       '<ul style="margin:6px 0">'+r.lineas.map(function(m){ return '<li>'+esc(m.nombre)+' — '+fmt(m.cant)+' '+esc(m.unidad)+' · '+dinero(m.costo)+'</li>'; }).join('')+'</ul>'+foto+'</div>';
   }).join('') || '<div class="vacio">Este lugar no tiene recibos de compra.</div>';
   $('dlgLugar').showModal();
