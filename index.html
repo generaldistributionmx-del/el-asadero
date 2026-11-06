@@ -854,6 +854,9 @@ function pintarRecibos(){
     if(nom.length) h+='<div class="card"><div class="grupo">Por insumo</div>'+nom.map(function(n){ var o=porIns[n]; return filaBarra(n,o.costo,maxI,fmt(o.cant)+' '+esc(o.unidad)+' · '+o.veces+(o.veces>1?' compras':' compra')); }).join('')+'</div>';
     var tks=ordenar(porTarj), maxT=tks.length?porTarj[tks[0]]:0;
     if(tks.length) h+='<div class="card"><div class="grupo">Por tarjeta</div>'+tks.map(function(t){ return filaBarra(nombreTarjeta(t),porTarj[t],maxT); }).join('')+'</div>';
+    // Tarjetas personales (DB.reembolsar): lo gastado con ellas hay que devolverlo.
+    var reem = Object.keys(DB.reembolsar||{}).filter(function(t){ return DB.reembolsar[t] && porTarj[t]>0; });
+    if(reem.length) h+='<div class="card"><div class="grupo">Por reembolsar</div><div class="sub" style="margin-bottom:6px">Gastado con una tarjeta personal: hay que devolver ese dinero.</div>'+reem.map(function(t){ return filaBarra(nombreTarjeta(t),porTarj[t],porTarj[t]); }).join('')+'</div>';
     var pvs=ordenar(porProv), maxP=pvs.length?porProv[pvs[0]]:0;
     window.__lugares = pvs;
     if(pvs.length) h+='<div class="card"><div class="grupo">Por lugar</div><div class="sub" style="margin-bottom:6px">Toca un lugar para ver todos sus recibos'+(window.AS_NUBE?' y sus fotos':'')+'.</div>'+pvs.map(function(n,k){ return '<div style="cursor:pointer" onclick="verLugar('+k+')">'+filaBarra(n,porProv[n],maxP)+'</div>'; }).join('')+'</div>';
