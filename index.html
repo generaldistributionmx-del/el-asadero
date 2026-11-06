@@ -808,7 +808,7 @@ function pintarRecibos(){
       if(m.horas) e.horas.push(m.horas); if(m.periodo && e.periodos.indexOf(m.periodo)<0) e.periodos.push(m.periodo);
       return;
     }
-    if(m.tipo==='gasto'){ otros+=m.costo; porGasto[m.nombre]=(porGasto[m.nombre]||0)+m.costo; return; }
+    if(m.tipo==='gasto'){ otros+=m.costo; porGasto[m.nombre]=(porGasto[m.nombre]||0)+m.costo; porCat['Otros']=(porCat['Otros']||0)+m.costo; return; }
     ins += m.costo||0;
     var i=insumo(m.insumoId), cat=i?i.cat:'Otros';
     porCat[cat]=(porCat[cat]||0)+m.costo;
