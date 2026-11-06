@@ -289,14 +289,15 @@ AS_MENU_INICIAL.forEach(function(c){ if(c[0]==='Refrescos' || c[0]==='Dulces y b
 // "unidad" es la de la categoría; las excepciones van en UNIDADES_MANUEL.
 var LISTAS_MANUEL = {
   Carnes:    {unidad:'lb', nombres:['Carne asada picada','Carne asada en bistec','Pechuga de pollo picada','Camarón','Adobada','Chorizo',
-              'Lengua','Tripa cocida','Menudo','Pata de res','Chamorro','Carne para birria (bulk)','Tocino','Jamón']},
+              'Lengua de res (Beef tongue)','Tripitas cocidas 10 lb','Menudo','Pata de res','Chamorro cortado 1" (Beef shank slice)','Carne para birria (bulk)','Tocino','Jamón',
+              'Beef filo en cubos (Diced beef filo)','Muslo de pollo en cubos (Diced chicken thigh)','Espaldilla (Shoulder clod)']},
   Verduras:  {unidad:'lb', nombres:['Cebolla blanca 25 lb','Cebolla morada','Cilantro (60 ct)','Limón (200 ct)','Jitomate Roma XL','Tomatillo','Chile jalapeño','Aguacate','Lechuga','Jícama','Pepino',
               'Mango','Plátano','Piña','Fresa','Melón','Sandía','Naranja']},
   Tortillas: {unidad:'paquete', nombres:['Tortilla de maíz blanca 4.5" (60 ct)','Tortilla para quesadillas','Tortilla para burrito','Tortilla para birria',
               'Pan para torta','Tostadas','Chilaquiles','Family Pack']},
   // 23-oct: + leche evaporada (junto a la leche), Knorr, clamato, tajín, Valentina, jugo de naranja y sazonador.
   // No se repitieron: leche condensada (= Lechera), cuerito y sopa Maruchan (ya están en Otros).
-  Insumos:   {unidad:'pieza', nombres:['Queso para quesadilla','Salsa de queso para nachos','Queso fresco','Queso cotija','Queso rallado amarillo para nachos','Leche','Leche evaporada','Crema',
+  Insumos:   {unidad:'pieza', nombres:['Queso para quesadilla','Salsa de queso para nachos','Queso fresco','Queso cotija rallado FUD (12/16 oz)','Queso rallado amarillo para nachos','Leche','Leche evaporada','Crema',
               'Media crema','Lechera','Granola','Coco rallado','Banderilla con popote',
               'Arroz grano largo 50 lb','Frijol','Azúcar granulada 25 lb',
               'Knorr de res','Knorr de tomate','Sazonador de carne','Tajín','Salsa Valentina','Salsa Maggi','Salsa Huichol','Salsa Siete Mares','Salsa negra','Salsa negra marisquera','Salsa ranchera La Costeña 7 oz','Chamoy','Clamato','Jugo de naranja']},
@@ -322,7 +323,7 @@ var LISTAS_MANUEL = {
 };
 // Cómo compra Manuel cada cosa cuando no es la unidad de su categoría.
 // 23-oct-2026: "verduras se compra todo por caja" → todas las verduras van por caja (antes cebolla por costal y algunas por pieza).
-var UNIDADES_MANUEL = {'Salsa ranchera La Costeña 7 oz':'lata'};
+var UNIDADES_MANUEL = {'Salsa ranchera La Costeña 7 oz':'lata', 'Queso cotija rallado FUD (12/16 oz)':'lb'};
 LISTAS_MANUEL.Verduras.unidad = 'caja';
 LISTAS_MANUEL.Verduras.nombres.forEach(function(n){ UNIDADES_MANUEL[n] = 'caja'; });
 // Sugeridos del primer borrador (ya reemplazados por las listas de Manuel; se quedan apagados). Existencia en 0: no se inventan cantidades.
@@ -431,7 +432,11 @@ function cargar(){
     ['Arroz','Arroz grano largo 50 lb','costal'],
     ['Azúcar','Azúcar granulada 25 lb','costal'],
     ['Mayonesa','Mayonesa Chef\'s Quality 1 galón','galón'],
-    ['Harina de maíz (masa)','Harina de maíz Maseca 50 lb','costal']
+    ['Harina de maíz (masa)','Harina de maíz Maseca 50 lb','costal'],
+    ['Lengua','Lengua de res (Beef tongue)','lb'],
+    ['Tripa cocida','Tripitas cocidas 10 lb','lb'],
+    ['Chamorro','Chamorro cortado 1" (Beef shank slice)','lb'],
+    ['Queso cotija','Queso cotija rallado FUD (12/16 oz)','lb']
   ];
   DB.renombrados = DB.renombrados || {};
   RENOMBRES.forEach(function(r){
