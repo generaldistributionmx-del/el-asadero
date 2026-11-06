@@ -78,7 +78,6 @@
 </header>
 <nav>
   <button data-tab="insumos" class="on">Insumos</button>
-  <button data-tab="conteo">Conteo</button>
   <button data-tab="platillos">Platillos</button>
   <button data-tab="recetas">Recetas</button>
   <button data-tab="recibos">Compras</button>
@@ -101,27 +100,6 @@
     </div>
     <div id="listaInsumos"></div>
     <button class="btn sec" onclick="abrirInsumo()">+ Agregar insumo</button>
-  </section>
-
-  <!-- CONTEO -->
-  <section id="conteo" class="oculto">
-    <h2>Conteo y merma</h2>
-    <div class="aviso">Al cerrar, cuenta lo que hay de verdad y ponlo aquí. Si algo se echó a perder, regístralo como merma.</div>
-    <div class="card">
-      <label>Insumo</label>
-      <select id="kInsumo"></select>
-      <div class="sub" id="kActual" style="margin-top:6px"></div>
-      <label>¿Qué pasó?</label>
-      <select id="kTipo">
-        <option value="conteo">Conteo físico (lo que hay ahorita)</option>
-        <option value="merma">Merma (se tiró / se echó a perder)</option>
-      </select>
-      <label id="kLabel">Cantidad contada</label>
-      <input id="kCant" type="number" inputmode="decimal" step="any">
-      <label>Nota (opcional)</label>
-      <input id="kNota">
-      <button class="btn" onclick="guardarConteo()">Guardar</button>
-    </div>
   </section>
 
   <!-- PLATILLOS -->
@@ -630,23 +608,6 @@ function llenarSelect(sel){
   if(v && insumo(v) && insumo(v).activo) sel.value=v;
 }
 
-// ---------- Conteo / merma ----------
-function actConteo(){
-  var i=insumo($('kInsumo').value);
-  $('kActual').textContent = i ? 'La app dice que hay: '+fmt(i.stock)+' '+i.unidad : '';
-  $('kLabel').textContent = $('kTipo').value==='conteo' ? 'Cantidad contada' : 'Cantidad que se tiró';
-}
-['kInsumo','kTipo'].forEach(function(id){ $(id).addEventListener('input',actConteo); });
-function guardarConteo(){
-  var i=insumo($('kInsumo').value), c=parseFloat($('kCant').value), tipo=$('kTipo').value;
-  if(!i || !(c>=0) || $('kCant').value===''){ toast('Falta la cantidad'); return; }
-  var antes=i.stock, despues = tipo==='conteo' ? c : Math.max(0, antes-c);
-  DB.movs.push({id:nuevoId(),fecha:new Date().toISOString(),tipo:tipo,insumoId:i.id,nombre:i.nombre,unidad:i.unidad,
-    cant:c,antes:antes,despues:despues,nota:$('kNota').value.trim()});
-  i.stock=despues; guardar(); $('kCant').value=''; $('kNota').value=''; actConteo(); pintar();
-  toast(tipo==='conteo' ? (despues===antes?'Cuadra exacto':'Diferencia: '+fmt(despues-antes)+' '+i.unidad) : 'Merma registrada');
-}
-
 // ---------- Platillos y recetas ----------
 function costoReceta(nombre){
   var r=DB.recetas[nombre]; if(!r||!r.length) return null;
@@ -891,7 +852,7 @@ function pintarHist(){
 }
 
 function pintar(){
-  pintarInsumos(); llenarSelect($('kInsumo')); actConteo(); pintarPlatillos(); pintarPreps(); pintarHist(); llenarSelect($('rcInsumo')); rcAct(); pintarRecibos(); pintarRcLineas();
+  pintarInsumos(); pintarPlatillos(); pintarPreps(); pintarHist(); llenarSelect($('rcInsumo')); rcAct(); pintarRecibos(); pintarRcLineas();
   var provs={}; DB.movs.forEach(function(m){ if(m.proveedor) provs[m.proveedor]=1; });
   $('provs').innerHTML = Object.keys(provs).map(function(p){ return '<option value="'+esc(p)+'">'; }).join('');
 }
