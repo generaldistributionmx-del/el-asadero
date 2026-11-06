@@ -175,15 +175,34 @@
       <button class="btn" onclick="rcGuardar()">Guardar recibo</button>
     </div>
 
+    <h2 style="margin-top:18px">Nómina</h2>
+    <div class="aviso">Lo que se paga a cada empleado. Escribe el nombre, el periodo y lo que se le paga; se suma solo a los gastos.</div>
+    <div class="card">
+      <label>Empleado</label>
+      <input id="nEmpleado" list="empleados" placeholder="Nombre del empleado">
+      <datalist id="empleados"></datalist>
+      <div class="dos">
+        <div><label>Periodo</label><input id="nPeriodo" placeholder="Ej. 16–31 oct"></div>
+        <div><label>Horas (opcional)</label><input id="nHoras" placeholder="Ej. 58:08"></div>
+      </div>
+      <div class="dos">
+        <div><label>Pago $</label><input id="nMonto" type="number" inputmode="decimal" step="any"></div>
+        <div><label>Fecha</label><input id="nFecha" type="date"></div>
+      </div>
+      <label>Nota (opcional)</label>
+      <input id="nNota" placeholder="Ej. día pendiente, bono…">
+      <button class="btn" onclick="nomGuardar()">Guardar pago</button>
+    </div>
+
     <h2 style="margin-top:18px">Otro gasto</h2>
-    <div class="aviso">Para lo que no es insumo: renta, luz, gas, nómina, reparaciones…</div>
+    <div class="aviso">Para lo que no es insumo: renta, luz, gas, reparaciones…</div>
     <div class="card">
       <div class="dos">
         <div><label>Concepto</label><input id="gConcepto" list="conceptos" placeholder="Ej. Luz"></div>
         <div><label>Monto $</label><input id="gMonto" type="number" inputmode="decimal" step="any"></div>
       </div>
       <label>Tarjeta (últimos 4, opcional)</label><input id="gTarjeta" inputmode="numeric" maxlength="4" list="tarjetas" placeholder="Ej. 1550">
-      <datalist id="conceptos"><option value="Renta"><option value="Luz"><option value="Gas"><option value="Agua"><option value="Nómina"><option value="Reparaciones"><option value="Limpieza"><option value="Otro"></datalist>
+      <datalist id="conceptos"><option value="Renta"><option value="Luz"><option value="Gas"><option value="Agua"><option value="Reparaciones"><option value="Limpieza"><option value="Otro"></datalist>
       <button class="btn" onclick="gGuardar()">Guardar gasto</button>
     </div>
   </section>
@@ -721,6 +740,15 @@ function rcGuardar(){
   guardar(); rcLineas=[]; $('rcNota').value=''; pintarRcLineas(); pintar();
   toast('Recibo guardado: '+dinero(tot));
 }
+// Nómina: cada pago a un empleado es un gasto de categoría "Nómina" (se suma a los gastos, aparte de los insumos).
+function nomGuardar(){
+  var n=$('nEmpleado').value.trim(), m=parseFloat($('nMonto').value);
+  if(!n){ toast('Falta el nombre del empleado'); return; }
+  if(!(m>0)){ toast('Falta el pago'); return; }
+  var fecha = $('nFecha').value ? new Date($('nFecha').value+'T12:00:00').toISOString() : new Date().toISOString();
+  DB.movs.push({id:nuevoId(),fecha:fecha,tipo:'gasto',cat:'Nómina',nombre:n,costo:m,periodo:$('nPeriodo').value.trim(),horas:$('nHoras').value.trim(),nota:$('nNota').value.trim()});
+  guardar(); $('nMonto').value=''; $('nHoras').value=''; $('nNota').value=''; pintar(); toast('Pago guardado: '+n+' '+dinero(m));
+}
 function gGuardar(){
   var c=$('gConcepto').value.trim(), m=parseFloat($('gMonto').value);
   if(!c){ toast('Falta el concepto'); return; }
@@ -744,8 +772,9 @@ function cierresMes(){
   var por = {};
   DB.movs.forEach(function(m){
     if(m.tipo!=='compra' && m.tipo!=='gasto') return;
-    var k = claveMes(m.fecha), o = por[k] || (por[k] = {ins:0, otros:0, n:0});
-    if(m.tipo==='gasto') o.otros += m.costo||0; else { o.ins += m.costo||0; o.n++; }
+    var k = claveMes(m.fecha), o = por[k] || (por[k] = {ins:0, otros:0, nom:0, n:0});
+    if(m.tipo==='gasto' && m.cat==='Nómina') o.nom += m.costo||0;
+    else if(m.tipo==='gasto') o.otros += m.costo||0; else { o.ins += m.costo||0; o.n++; }
   });
   return por;
 }
@@ -763,11 +792,19 @@ function filaBarra(nombre, monto, max, extra){
 }
 function pintarRecibos(){
   llenarPeriodos();
+  var emp={}; DB.movs.forEach(function(m){ if(m.tipo==='gasto' && m.cat==='Nómina') emp[m.nombre]=1; });
+  $('empleados').innerHTML = Object.keys(emp).map(function(n){ return '<option value="'+esc(n)+'">'; }).join('');
   $('tarjetas').innerHTML = Object.keys(DB.tarjetas||{}).map(function(t){ return '<option value="'+esc(t)+'">'+esc(DB.tarjetas[t])+'</option>'; }).join('');
-  var ms=movsDelPeriodo(), total=0, ins=0, otros=0, porCat={}, porIns={}, porGasto={}, recs={}, porProv={}, porTarj={};
+  var ms=movsDelPeriodo(), total=0, ins=0, otros=0, nomina=0, porEmp={}, porCat={}, porIns={}, porGasto={}, recs={}, porProv={}, porTarj={};
   ms.forEach(function(m){
     total += m.costo||0;
-    porTarj[m.tarjeta||''] = (porTarj[m.tarjeta||'']||0) + (m.costo||0);
+    if(!(m.tipo==='gasto' && m.cat==='Nómina')) porTarj[m.tarjeta||''] = (porTarj[m.tarjeta||'']||0) + (m.costo||0);
+    if(m.tipo==='gasto' && m.cat==='Nómina'){
+      nomina += m.costo||0;
+      var e=porEmp[m.nombre]||(porEmp[m.nombre]={costo:0,horas:[],periodos:[]}); e.costo+=m.costo||0;
+      if(m.horas) e.horas.push(m.horas); if(m.periodo && e.periodos.indexOf(m.periodo)<0) e.periodos.push(m.periodo);
+      return;
+    }
     if(m.tipo==='gasto'){ otros+=m.costo; porGasto[m.nombre]=(porGasto[m.nombre]||0)+m.costo; return; }
     ins += m.costo||0;
     var i=insumo(m.insumoId), cat=i?i.cat:'Otros';
@@ -778,9 +815,12 @@ function pintarRecibos(){
   });
   function ordenar(o){ return Object.keys(o).sort(function(a,b){ var x=typeof o[a]==='number'?o[a]:o[a].costo, y=typeof o[b]==='number'?o[b]:o[b].costo; return y-x; }); }
   var h='<div class="card"><div class="sub">Total gastado</div><div class="num" style="font-size:30px">'+dinero(total)+'</div>'+
-    '<span class="chip">Insumos '+dinero(ins)+'</span><span class="chip">Otros gastos '+dinero(otros)+'</span></div>';
+    '<span class="chip">Insumos '+dinero(ins)+'</span><span class="chip">Nómina '+dinero(nomina)+'</span><span class="chip">Otros gastos '+dinero(otros)+'</span></div>';
   if(!ms.length) h+='<div class="vacio">No hay gastos en este periodo.</div>';
   else {
+    var emps=ordenar(porEmp), maxE=emps.length?porEmp[emps[0]].costo:0;
+    if(emps.length) h+='<div class="card"><div class="grupo">Nómina por empleado</div>'+emps.map(function(n){ var e=porEmp[n];
+      return filaBarra(n,e.costo,maxE,(e.periodos.join(', ')+(e.horas.length?' · '+e.horas.join(' + ')+' h':''))); }).join('')+'</div>';
     var cats=ordenar(porCat), maxC=cats.length?porCat[cats[0]]:0;
     if(cats.length) h+='<div class="card"><div class="grupo">Por categoría</div>'+cats.map(function(c){ return filaBarra(c,porCat[c],maxC); }).join('')+'</div>';
     var nom=ordenar(porIns), maxI=nom.length?porIns[nom[0]].costo:0;
@@ -798,8 +838,8 @@ function pintarRecibos(){
   var cm = cierresMes(), ks = Object.keys(cm).sort().reverse();
   if(ks.length){
     h += '<div class="card"><div class="grupo">Cierre de cada mes</div>' + ks.map(function(k){
-      var o = cm[k], t = o.ins + o.otros;
-      return '<div class="fila" style="padding:6px 0;border-bottom:1px dashed var(--borde);cursor:pointer" onclick="$(\'rcPer\').value=\'m:'+k+'\';pintarRecibos()"><div><b>'+nombreMes(k)+'</b><div class="sub">Insumos '+dinero(o.ins)+' · Otros '+dinero(o.otros)+'</div></div><b>'+dinero(t)+'</b></div>';
+      var o = cm[k], t = o.ins + o.nom + o.otros;
+      return '<div class="fila" style="padding:6px 0;border-bottom:1px dashed var(--borde);cursor:pointer" onclick="$(\'rcPer\').value=\'m:'+k+'\';pintarRecibos()"><div><b>'+nombreMes(k)+'</b><div class="sub">Insumos '+dinero(o.ins)+' · Nómina '+dinero(o.nom)+' · Otros '+dinero(o.otros)+'</div></div><b>'+dinero(t)+'</b></div>';
     }).join('') + '<div class="sub" style="margin-top:6px">Toca un mes para ver su detalle. Cada recibo nuevo se suma solo.</div></div>';
   }
   $('rcResumen').innerHTML=h;
